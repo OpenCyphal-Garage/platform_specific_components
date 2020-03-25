@@ -198,9 +198,11 @@ libuavcan::Result flagPollTimeout_Clear(volatile std::uint32_t& flagRegister, st
 }  // END namespace S32K
 
 /**
- * S32K CAN-FD driver InterfaceGroup class definition, with the next template arguments:
- * 
- * FrameT = Frame: MTUBytesParam = MaxFrameSizeBytes (64 bytes)
+ * Implementation of the methods from libuavcan's media layer abstracct class InterfaceGroup,
+ * with the template arguments listed below; for further details of this interface class, 
+ * refer to the template declaration in libuavcan/media/interface.hpp
+ *
+ * FrameT = Frame: MTUBytesParam = MaxFrameSizeBytes (64 bytes for CAN-FD)
  *                 FlagBitsCompareMask = 0x00 (default)
  * MaxTxFrames = 1 (default)
  * MaxRxFrames = 1 (default)
@@ -643,9 +645,11 @@ public:
 };
 
 /**
- * S32K CAN-FD driver InterManager class definition, with the next template arguments:
+ * Implementation of the methods from libuavcan's media layer abstracct class InterfaceManager,
+ * with the template arguments listed below; for further details of this interface class, 
+ * refer to the template declaration in libuavcan/media/interface.hpp
  *
- * InterfaceGroupT    = S32K_InterfaceGroup  (previously instantiated class in the file)
+ * InterfaceGroupT    = S32K_InterfaceGroup  (previously declared class in the file)
  * InterfaceGroupPtrT = S32K_InterfaceGroup* (raw pointer)
  */
 class S32K_InterfaceManager : private InterfaceManager<S32K_InterfaceGroup, S32K_InterfaceGroup*>
