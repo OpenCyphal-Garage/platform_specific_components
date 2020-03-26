@@ -308,7 +308,7 @@ public:
      * @param instance The FlexCAN peripheral instance number in which the ISR will be executed, starts at 0.
      *                 differing form this library's interface indexes that start at 1.
      */
-    static void __attribute__((interrupt("IRQ"))) S32K_libuavcan_ISR_handler(std::uint8_t instance)
+    static void S32K_libuavcan_ISR_handler(std::uint8_t instance)
     {
         /* Perform the ISR atomically */
         DISABLE_INTERRUPTS()
