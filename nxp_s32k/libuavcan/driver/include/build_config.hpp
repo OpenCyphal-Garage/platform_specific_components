@@ -16,6 +16,9 @@
  * S32K148: 3
  */
 
+#ifndef S32K_BUILD_CONFIG_HPP_INCLUDED
+#define S32K_BUILD_CONFIG_HPP_INCLUDED
+
 /**
  * Macro for additional configuration needed when using a TJA1044 transceiver, which is used
  * in NXP's UCANS32K146 board, set to 0 when using EVB's or other boards.
@@ -29,3 +32,5 @@
  * defaults to S32K146 from NXP's UCANS32K146 board
  */
 #include "S32K146.h"
+
+#endif // S32K_BUILD_CONFIG_HPP_INCLUDED
