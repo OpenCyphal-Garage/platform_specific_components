@@ -54,8 +54,9 @@ libuavcan::media::S32K_InterfaceGroup* demo_InterfacePtr;
 /* Initialize the node with the previously defined filtering using factory method */
 status = demo_Manager.startInterfaceGroup(&demo_Filter,Node_Filters_Count,demo_InterfacePtr);
 ```
-
- **For further details consult the S32K1xx reference manual [here.](https://www.nxp.com/webapp/Download?colCode=S32K1XXRM)**
+<br/>
+<br/>
+ **For further details consult the S32K1 reference manual [here.](https://www.nxp.com/webapp/Download?colCode=S32K1XXRM)**
  ![alt text](https://s3-prod-europe.autonews.com/s3fs-public/NXP_logo%20web.jpg) 
  ### Copyright© 2020, NXP. All rights reserved.
 
