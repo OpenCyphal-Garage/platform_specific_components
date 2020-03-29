@@ -1,5 +1,16 @@
 # S32K Libuavcan V1
 ### Bare-metal media layer driver for the NXP S32K14x family of automotive-grade microcontrollers, featuring CAN-FD running at 4 Mb/s and 1 Mb/s in data and nominal phases, respectively.
+#### Creating the Interface Group
+```
+/* Instantiate factory object */
+libuavcan::media::S32K_InterfaceManager demo_Manager;
+
+/* Create pointer to Interface object */
+libuavcan::media::S32K_InterfaceGroup* demo_InterfacePtr;
+
+/* Initialize the node with the previously defined filtering using factory method */
+status = demo_Manager.startInterfaceGroup(&demo_Filter,Node_Filters_Count,demo_InterfacePtr);
+```
 An example project of it's usage for custom applications, and file dependencies used, is available in this **[Demo.](https://github.com/noxuz/libuavcan_demo)**
 | Peripheral used by this driver | Resources utilized |
 | ------------- | ------------- |
