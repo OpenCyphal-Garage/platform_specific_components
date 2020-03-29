@@ -335,7 +335,7 @@ Result S32K_InterfaceGroup::messageBuffer_Transmit(std::uint_fast8_t iface_index
     Result Status = S32K::flagPollTimeout_Set(S32K::FlexCAN[iface_index]->IFLAG1, 1 << TX_MB_index);
 
     /* Clear the flag previously polled (W1C register) */
-    S32K::FlexCAN[iface_index]->IFLAG1 |= 1 << TX_MB_index;
+    S32K::FlexCAN[iface_index]->IFLAG1 |= 1u << TX_MB_index;
 
     /* Return successful transmission request status */
     return Status;
