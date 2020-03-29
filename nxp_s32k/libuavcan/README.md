@@ -41,8 +41,9 @@ An example project of it's usage for custom applications, and file dependencies 
 
 *S32K146 and S32K148 although having multiple CAN-FD capable FlexCAN instances, their evaluation boards (EVB's) have
  only one transceiver, the other instances's  digital signals do are set, to the board's pin headers.*
-
-#### Creating the Interface Group
+<br/>
+<br/>
+#### Creating the Interface Group:
 ```
 /* Instantiate factory object */
 libuavcan::media::S32K_InterfaceManager demo_Manager;
