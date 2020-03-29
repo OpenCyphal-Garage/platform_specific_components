@@ -296,8 +296,11 @@ Result S32K_InterfaceGroup::messageBuffer_Transmit(std::uint_fast8_t iface_index
                                                    std::uint8_t      TX_MB_index,
                                                    const FrameType&  frame)
 {
-    /* Get data length of the frame wished to be written */
+    /* Get data length of the frame wanted to be transmitted */
     std::uint_fast8_t payloadLength = frame.getDataLength();
+
+    /* Get the frame's dlc */
+    const std::uint32_t dlc = static_cast<std::underlying_type<libuavcan::media::CAN::FrameDLC>::type>(frame.getDLC());
 
     /* Casting from uint8 to native uint32 for faster payload transfer to transmission message buffer */
     std::uint32_t* native_FrameData = reinterpret_cast<std::uint32_t*>(const_cast<std::uint8_t*>(frame.data));
@@ -324,11 +327,11 @@ Result S32K_InterfaceGroup::messageBuffer_Transmit(std::uint_fast8_t iface_index
      * Substitute Remote Request  (SRR) = 0
      * ID Extended Bit            (IDE) = 1
      * Remote Tx Request          (RTR) = 0
-     * Data Length Code           (DLC) = frame.getdlc()
+     * Data Length Code           (DLC) = frame's dlc 
      * Counter Time Stamp  (TIME STAMP) = 0 ( Handled by hardware )
      */
     S32K::FlexCAN[iface_index]->RAMn[TX_MB_index * S32K::MB_Size_Words] =
-        CAN_RAMn_DATA_BYTE_1(0x20) | CAN_WMBn_CS_DLC(frame.getDLC()) | CAN_RAMn_DATA_BYTE_0(0xCC);
+        CAN_RAMn_DATA_BYTE_1(dlc) | CAN_WMBn_CS_DLC(frame.getDLC()) | CAN_RAMn_DATA_BYTE_0(0xCC);
 
     /* After a succesful transmission the interrupt flag of the corresponding message buffer is set, poll with
      * timeout for it */
