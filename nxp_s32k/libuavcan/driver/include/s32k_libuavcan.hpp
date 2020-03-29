@@ -72,33 +72,9 @@ private:
      * @param  frame       The individual frame being transmitted.
      * @return libuavcan::Result:Success after a successful transmission request.
      */
-    libuavcan::Result messageBuffer_Transmit(std::uint_fast8_t iface_index,
-                                             std::uint8_t      TX_MB_index,
-                                             const FrameType&  frame);
-
-    /**
-     * Helper function for resolving the timestamp of a received frame from FlexCAN'S 16-bit overflowing timer. Based
-     * on Pyuavcan's SourceTimeResolver class from which the terms source and target are used.
-     * Note: A maximum of 820 microseconds is allowed for the reception ISR to reach this function starting from
-     *       a successful frame reception. The computation relies in that no more than a full period from the 16-bit
-     *       timestamping timer running at 80Mhz have passed, this could occur in deadlocks or priority inversion
-     *       scenarios since 820 uSecs constitute a significant amount of cycles, if this happens, timestamps would stop
-     *       being monotonic.
-     * @param  frame_timestamp Source clock read from the FlexCAN's peripheral timer.
-     * @param  instance        The interface instance number used by the ISR
-     * @return time::Monotonic 64-bit timestamp resolved from 16-bit Flexcan's timer samples.
-     */
-    static libuavcan::time::Monotonic resolve_Timestamp(std::uint64_t frame_timestamp, std::uint8_t instance);
+    Result messageBuffer_Transmit(std::uint_fast8_t iface_index, std::uint8_t TX_MB_index, const FrameType& frame);
 
 public:
-    /**
-     * FlexCAN ISR for frame reception, implements a walkaround to the S32K1 FlexCAN's lack of a RX FIFO neither a DMA
-     * triggering mechanism for CAN-FD frames in hardware. Completes in at max 7472 cycles when compiled with g++ at -O3
-     * @param instance The FlexCAN peripheral instance number in which the ISR will be executed, starts at 0.
-     *                 differing form this library's interface indexes that start at 1.
-     */
-    static void S32K_libuavcan_ISR_handler(std::uint8_t instance);
-
     /**
      * Get the number of CAN-FD capable FlexCAN modules in current S32K14 MCU
      * @return 1-* depending of the target MCU.
@@ -116,10 +92,10 @@ public:
      * @return libuavcan::Result::Success if all frames were written.
      * @return libuavcan::Result::BadArgument if interface_index or frames_len are out of bound.
      */
-    virtual libuavcan::Result write(std::uint_fast8_t interface_index,
-                                    const FrameType (&frames)[TxFramesLen],
-                                    std::size_t  frames_len,
-                                    std::size_t& out_frames_written) override;
+    virtual Result write(std::uint_fast8_t interface_index,
+                         const FrameType (&frames)[TxFramesLen],
+                         std::size_t  frames_len,
+                         std::size_t& out_frames_written) override;
 
     /**
      * Read from an intermediate ISR Frame buffer of an FlexCAN instance.
@@ -129,9 +105,9 @@ public:
      * @return libuavcan::Result::Success If no errors occurred.
      * @return libuavcan::Result::BadArgument If interface_index is out of bound.
      */
-    virtual libuavcan::Result read(std::uint_fast8_t interface_index,
-                                   FrameType (&out_frames)[RxFramesLen],
-                                   std::size_t& out_frames_read) override;
+    virtual Result read(std::uint_fast8_t interface_index,
+                        FrameType (&out_frames)[RxFramesLen],
+                        std::size_t& out_frames_read) override;
 
     /**
      * Reconfigure reception filters for dynamic subscription of nodes, all the previous filter configurations are
@@ -142,8 +118,8 @@ public:
      * @return libuavcan::Result::Failure if a register didn't get configured as desired.
      * @return libuavcan::Result::BadArgument if filter_config_length is out of bound.
      */
-    virtual libuavcan::Result reconfigureFilters(const typename FrameType::Filter* filter_config,
-                                                 std::size_t                       filter_config_length) override;
+    virtual Result reconfigureFilters(const typename FrameType::Filter* filter_config,
+                                      std::size_t                       filter_config_length) override;
 
     /**
      * Block with timeout for available Message buffers.
@@ -154,7 +130,7 @@ public:
      *          libuavcan::Result::Success if an interface is ready for read, and if
      *          @p ignore_write_available is false, or write.
      */
-    virtual libuavcan::Result select(libuavcan::duration::Monotonic timeout, bool ignore_write_available) override;
+    virtual Result select(libuavcan::duration::Monotonic timeout, bool ignore_write_available) override;
 };
 
 /**
@@ -184,9 +160,9 @@ public:
      *         The caller should assume that @p out_group is an invalid pointer if any failure is returned.
      * @return libuavcan::Result::BadArgument if filter_config_length is out of bound.
      */
-    virtual libuavcan::Result startInterfaceGroup(const typename InterfaceGroupType::FrameType::Filter* filter_config,
-                                                  std::size_t            filter_config_length,
-                                                  InterfaceGroupPtrType& out_group) override;
+    virtual Result startInterfaceGroup(const typename InterfaceGroupType::FrameType::Filter* filter_config,
+                                       std::size_t                                           filter_config_length,
+                                       InterfaceGroupPtrType&                                out_group) override;
 
     /**
      * Release and deinitialize the peripherals needed for the current driver, disables all the FlexCAN
@@ -196,7 +172,7 @@ public:
      * @param  inout_group Pointer that will be set to null
      * @return libuavcan::Result::Success. If the used peripherals were deinitialized properly.
      */
-    virtual libuavcan::Result stopInterfaceGroup(InterfaceGroupPtrType& inout_group) override;
+    virtual Result stopInterfaceGroup(InterfaceGroupPtrType& inout_group) override;
 
     /**
      * Return the number of filters that the current UAVCAN node can support.
