@@ -283,7 +283,7 @@ public:
             }
 
             /* Clear MB interrupt flag (write 1 to clear)*/
-            S32K::FlexCAN[instance]->IFLAG1 |= (1 << MB_index);
+            S32K::FlexCAN[instance]->IFLAG1 |= (1u << MB_index);
         }
 
         /* Enable interrupts back */
