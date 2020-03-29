@@ -53,36 +53,6 @@ namespace libuavcan
 namespace media
 {
 /**
- * @namespace S32K
- * Microcontroller-specific constants, variables and non-mutating helper functions for the use of the FlexCAN peripheral
- */
-namespace S32K
-{
-/**
- * Helper function for block polling a bit flag until it is set with a timeout of 0.2 seconds using a LPIT timer,
- * the argument list and usage reassembles the classic block polling while loop, and instead of using a third
- * argument to decide if it'ss a timed block for a clear or set, the two flavors of the function are provided.
- *
- * @param  flagRegister Register where the flag is located.
- * @param  flagMask     Mask to AND'nd with the register for isolating the flag.
- * @return libuavcan::Result::Success If the flag set before the timeout expiration..
- * @return libuavcan::Result::Failure If a timeout ocurred before the desired flag set.
- */
-libuavcan::Result flagPollTimeout_Set(volatile std::uint32_t& flagRegister, std::uint32_t flag_Mask);
-
-/**
- * Helper function for block polling a bit flag until it is cleared with a timeout of 0.2 seconds using a LPIT timer
- *
- * @param  flagRegister Register where the flag is located.
- * @param  flagMask     Mask to AND'nd with the register for isolating the flag.
- * @return libuavcan::Result::Success If the flag cleared before the timeout expiration..
- * @return libuavcan::Result::Failure If a timeout ocurred before the desired flag cleared.
- */
-libuavcan::Result flagPollTimeout_Clear(volatile std::uint32_t& flagRegister, std::uint32_t flag_Mask);
-
-}  // END namespace S32K
-
-/**
  * Implementation of the methods from libuavcan's media layer abstracct class InterfaceGroup,
  * with the template arguments listed below; for further details of this interface class,
  * refer to the template declaration in libuavcan/media/interface.hpp
@@ -123,7 +93,7 @@ private:
 public:
     /**
      * FlexCAN ISR for frame reception, implements a walkaround to the S32K1 FlexCAN's lack of a RX FIFO neither a DMA
-     * triggering mechanism for CAN-FD frames in hardware. Completes in at max 7472 cycles when compiled with g++ at -O3. 
+     * triggering mechanism for CAN-FD frames in hardware. Completes in at max 7472 cycles when compiled with g++ at -O3
      * @param instance The FlexCAN peripheral instance number in which the ISR will be executed, starts at 0.
      *                 differing form this library's interface indexes that start at 1.
      */
@@ -195,7 +165,7 @@ public:
  * InterfaceGroupT    = S32K_InterfaceGroup  (previously declared class in the file)
  * InterfaceGroupPtrT = S32K_InterfaceGroup* (raw pointer)
  */
-class S32K_InterfaceManager : private InterfaceManager<S32K_InterfaceGroup, S32K_InterfaceGroup*>
+class S32K_InterfaceManager : public InterfaceManager<S32K_InterfaceGroup, S32K_InterfaceGroup*>
 {
 private:
     /** S32K_InterfaceGroup type object member, which address is used in the factory method next */
@@ -203,7 +173,8 @@ private:
 
 public:
     /**
-     * Initializes the peripherals needed for libuavcan driver layer in current MCU
+     * Initialize the peripherals needed for the driver in the target MCU, also configures the
+     * core clock sources to the Normal RUN profile,
      * @param  filter_config         The filtering to apply equally to all FlexCAN instances.
      * @param  filter_config_length  The length of the @p filter_config argument.
      * @param  out_group             A pointer to set to the started group. This will be nullptr if the start method
@@ -218,11 +189,15 @@ public:
                                                   InterfaceGroupPtrType& out_group) override;
 
     /**
-     * Deinitializes the peripherals needed for the current libuavcan driver layer.
-     * @param inout_group Pointer that will be set to null
+     * Release and deinitialize the peripherals needed for the current driver, disables all the FlexCAN
+     * instances available, waiting for any pending transmission or reception to finish before, also
+     * resets the LPIT timer used for timestamping, does not deconfigures the core clock sources
+    ¨* configured from startInterfaceGroup neither the pins.
+     * @param  inout_group Pointer that will be set to null
      * @return libuavcan::Result::Success. If the used peripherals were deinitialized properly.
      */
     virtual libuavcan::Result stopInterfaceGroup(InterfaceGroupPtrType& inout_group) override;
+
     /**
      * Return the number of filters that the current UAVCAN node can support.
      * @return The maximum number of frame filters available for filter groups managed by this object,

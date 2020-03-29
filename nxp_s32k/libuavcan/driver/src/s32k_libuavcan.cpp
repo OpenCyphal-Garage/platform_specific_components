@@ -5,7 +5,7 @@
  */
 
 /** @file
- * Driver for the media layer of Libuavcan v1 targeting
+ * Source driver file for the media layer of Libuavcan v1 targeting
  * the NXP S32K14 family of automotive grade MCU's running
  * CAN-FD at 4Mbit/s data phase and 1Mbit/s in nominal phase.
  */
@@ -16,6 +16,10 @@ namespace libuavcan
 {
 namespace media
 {
+/**
+ * @namespace S32K
+ * Microcontroller-specific constants, variables and non-mutating helper functions for the use of the FlexCAN peripheral
+ */
 namespace S32K
 {
 /** Number of capable CAN-FD FlexCAN instances */
@@ -68,6 +72,16 @@ enum MB_bit_to_index : std::uint8_t
     MessageBuffer6 = 0x40, /**< Number for the bit of the sixth  MB (1 << 6) */
 };
 
+/**
+ * Helper function for block polling a bit flag until it is set with a timeout of 0.2 seconds using a LPIT timer,
+ * the argument list and usage reassembles the classic block polling while loop, and instead of using a third
+ * argument to decide if it'ss a timed block for a clear or set, the two flavors of the function are provided.
+ *
+ * @param  flagRegister Register where the flag is located.
+ * @param  flagMask     Mask to AND'nd with the register for isolating the flag.
+ * @return libuavcan::Result::Success If the flag set before the timeout expiration..
+ * @return libuavcan::Result::Failure If a timeout ocurred before the desired flag set.
+ */
 libuavcan::Result flagPollTimeout_Set(volatile std::uint32_t& flagRegister, std::uint32_t flag_Mask)
 {
     /* Initialization of delta for timeout measurement */
@@ -99,6 +113,14 @@ libuavcan::Result flagPollTimeout_Set(volatile std::uint32_t& flagRegister, std:
     return libuavcan::Result::Failure;
 }
 
+/**
+ * Helper function for block polling a bit flag until it is cleared with a timeout of 0.2 seconds using a LPIT timer
+ *
+ * @param  flagRegister Register where the flag is located.
+ * @param  flagMask     Mask to AND'nd with the register for isolating the flag.
+ * @return libuavcan::Result::Success If the flag cleared before the timeout expiration..
+ * @return libuavcan::Result::Failure If a timeout ocurred before the desired flag cleared.
+ */
 libuavcan::Result flagPollTimeout_Clear(volatile std::uint32_t& flagRegister, std::uint32_t flag_Mask)
 {
     /* Initialization of delta for timeout measurement */
@@ -568,18 +590,20 @@ libuavcan::Result S32K_InterfaceManager::startInterfaceGroup(
     /* Start the timers */
     LPIT0->SETTEN |= LPIT_SETTEN_SET_T_EN_0(1) | LPIT_SETTEN_SET_T_EN_1(1);
 
-    /* Verify that the least significant 32-bit timer is counting (not locked at 0) */
-    while (!(LPIT0->TMR[0].CVAL & LPIT_TMR_CVAL_TMR_CUR_VAL_MASK))
+    /* Verify that the least significant 32-bit timer is counting (not locked at 0xFFFFFFFF) */
+    while (LPIT0->TMR[0].CVAL == LPIT_TMR_CVAL_TMR_CUR_VAL_MASK)
     {
     };
 
     /* FlexCAN instances initialization */
     for (std::uint8_t i = 0; i < S32K::CANFD_Count; i++)
     {
-        PCC->PCCn[S32K::PCC_FlexCAN_Index[i]] = PCC_PCCn_CGC_MASK; /* FlexCAN0 clock gating */
-        S32K::FlexCAN[i]->MCR |= CAN_MCR_MDIS_MASK;       /* Disable FlexCAN0 module for clock source selection */
-        S32K::FlexCAN[i]->CTRL1 |= CAN_CTRL1_CLKSRC_MASK; /* Select SYS_CLK as source (80Mhz)*/
-        S32K::FlexCAN[i]->MCR &= ~CAN_MCR_MDIS_MASK;      /* Enable FlexCAN and automatic transition to freeze mode*/
+        PCC->PCCn[S32K::PCC_FlexCAN_Index[i]] = PCC_PCCn_CGC_MASK; /* FlexCAN clock gating */
+        S32K::FlexCAN[i]->MCR |= CAN_MCR_MDIS_MASK;        /* Disable FlexCAN module for clock source selection */
+        S32K::FlexCAN[i]->CTRL1 &= ~CAN_CTRL1_CLKSRC_MASK; /* Clear any previous clock source configuration */
+        S32K::FlexCAN[i]->CTRL1 |= CAN_CTRL1_CLKSRC_MASK;  /* Select SYS_CLK as source (80Mhz)*/
+        S32K::FlexCAN[i]->MCR &= ~CAN_MCR_MDIS_MASK;       /* Enable FlexCAN peripheral */
+        S32K::FlexCAN[i]->MCR |= (CAN_MCR_HALT_MASK | CAN_MCR_FRZ_MASK); /* Request freeze mode etry */
 
         /* Block for freeze mode entry */
         while (!(S32K::FlexCAN[i]->MCR & CAN_MCR_FRZACK_MASK))
@@ -689,6 +713,7 @@ libuavcan::Result S32K_InterfaceManager::startInterfaceGroup(
     PORTE->PCR[5] |= PORT_PCR_MUX(5);                /* CAN0_TX at PORT E pin 5 */
 
 #if defined(MCU_S32K146) || defined(MCU_S32K148)
+
     PCC->PCCn[PCC_PORTA_INDEX] |= PCC_PCCn_CGC_MASK; /* Clock gating to PORT A */
     PORTA->PCR[12] |= PORT_PCR_MUX(3);               /* CAN1_RX at PORT A pin 12 */
     PORTA->PCR[13] |= PORT_PCR_MUX(3);               /* CAN1_TX at PORT A pin 13 */
@@ -744,10 +769,27 @@ libuavcan::Result S32K_InterfaceManager::stopInterfaceGroup(InterfaceGroupPtrTyp
         }
     }
 
+    /* Reset LPIT timer peripheral, (resets all except the MCR register) */
+    LPIT0->MCR |= LPIT_MCR_SW_RST(1);
+
+    /* Verify that the timer did reset (locked at 0xFFFFFFFF) */
+    while (LPIT0->TMR[0].CVAL != LPIT_TMR_CVAL_TMR_CUR_VAL_MASK)
+    {
+    };
+
+    /* Clear the reset bit since it isn't cleared automatically */
+    LPIT0->MCR &= ~LPIT_MCR_SW_RST_MASK;
+
+    /* Disable the clock to the LPIT's timers */
+    LPIT0->MCR &= ~LPIT_MCR_M_CEN_MASK;
+
+    /* Disable LPIT clock gating */
+    PCC->PCCn[PCC_LPIT_INDEX] &= ~PCC_PCCn_CGC_MASK;
+
     /* Assign to null the pointer output argument */
     inout_group = nullptr;
 
-    /* Return status code of successful stop of S32K_InterfaceGroup */
+    /* Return status code */
     return Status;
 }
 
@@ -760,8 +802,9 @@ std::size_t S32K_InterfaceManager::getMaxFrameFilters() const
 }  // END namespace libuavcan
 
 /**
- * Interrupt requests handled by hardware in each frame reception installed by the linker
- * in function of the number of instances available in the target MCU
+ * Interrupt service routines handled by hardware in each frame reception, they are installed by the linker
+ * in function of the number of instances available in the target MCU, the names match the ones from the defined
+ * interrupt vector table from the startup code located in the startup_S32K14x.S file.
  */
 extern "C"
 {

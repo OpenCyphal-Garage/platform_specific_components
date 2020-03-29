@@ -14,11 +14,11 @@ An example project of it's usage for custom applications, and file dependencies 
 | BUS_CLK  | 40Mhz  |
 | FLASH_CLK  | 26.67Mhz  |
 
-| Asynchronous clock sources | Divider value |
+| Asynchronous peripheral clock sources | Divider value |
 | ------------- | ------------- |
 | SPLLDIV2  | 1  |
 
-*Asynchronous dividers not mentioned are left unset and SCG registers are locked after initial setup.*
+*Asynchronous clock dividers not mentioned are left unset and SCG registers are locked after initial setup.*
 <br/>
 <br/>
 | Peripheral's functional clock  | Source and frequency |
