@@ -46,10 +46,10 @@ An example project of it's usage for custom applications, and file dependencies 
 #### Creating the Interface Group:
 ```
 /* Instantiate factory object */
-libuavcan::media::S32K_InterfaceManager demo_Manager;
+libuavcan::media::S32K::InterfaceManager demo_Manager;
 
 /* Create pointer to Interface object */
-libuavcan::media::S32K_InterfaceGroup* demo_InterfacePtr;
+libuavcan::media::S32K::InterfaceGroup* demo_InterfacePtr;
 
 /* Initialize the node with the previously defined filtering using factory method */
 status = demo_Manager.startInterfaceGroup(&demo_Filter,Node_Filters_Count,demo_InterfacePtr);
