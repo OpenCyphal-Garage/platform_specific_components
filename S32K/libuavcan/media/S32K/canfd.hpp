@@ -57,7 +57,7 @@ namespace media
  * Microcontroller-specific constants, variables and non-mutating helper functions for the use of the FlexCAN peripheral
  */
 namespace S32K
-{    
+{
 /**
  * Implementation of the methods from libuavcan's media layer abstracct class InterfaceGroup,
  * with the template arguments listed below; for further details of this interface class,
@@ -147,7 +147,8 @@ public:
  * InterfaceGroupT    = S32K_InterfaceGroup  (previously declared class in the file)
  * InterfaceGroupPtrT = S32K_InterfaceGroup* (raw pointer)
  */
-class InterfaceManager : public media::InterfaceManager<InterfaceGroup, InterfaceGroup*>{
+class InterfaceManager : public media::InterfaceManager<InterfaceGroup, InterfaceGroup*>
+{
 private:
     /** S32K_InterfaceGroup type object member, which address is used in the factory method next */
     InterfaceGroupType InterfaceGroupObj_;
