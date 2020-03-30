@@ -16,8 +16,8 @@
  * S32K148: 3
  */
 
-#ifndef S32K_BUILD_CONFIG_HPP_INCLUDED
-#define S32K_BUILD_CONFIG_HPP_INCLUDED
+#ifndef BUILD_CONFIG_HPP_INCLUDED
+#define BUILD_CONFIG_HPP_INCLUDED
 
 /**
  * Macro for additional configuration needed when using a TJA1044 transceiver, which is used
@@ -33,4 +33,4 @@
  */
 #include "S32K146.h"
 
-#endif  // S32K_BUILD_CONFIG_HPP_INCLUDED
+#endif  // BUILD_CONFIG_HPP_INCLUDED
