@@ -148,7 +148,7 @@ Result flagPollTimeout_Clear(volatile std::uint32_t& flagRegister, std::uint32_t
     return Result::Failure;
 }
 
-class FleCAN_interrupt : private InterfaceGroup
+class FlexCAN_interrupt : private InterfaceGroup
 {
 private:
     /**
@@ -824,13 +824,13 @@ std::size_t InterfaceManager::getMaxFrameFilters() const
  */
 extern "C"
 {
-    void CAN0_ORed_0_15_MB_IRQHandler() { libuavcan::media::S32K::FleCAN_interrupt::S32K_libuavcan_ISR_handler(0u); }
+    void CAN0_ORed_0_15_MB_IRQHandler() { libuavcan::media::S32K::FlexCAN_interrupt::S32K_libuavcan_ISR_handler(0u); }
 
 #if defined(MCU_S32K146) || defined(MCU_S32K148)
-    void CAN1_ORed_0_15_MB_IRQHandler() { libuavcan::media::S32K::FleCAN_interrupt::S32K_libuavcan_ISR_handler(1u); }
+    void CAN1_ORed_0_15_MB_IRQHandler() { libuavcan::media::S32K::FlexCAN_interrupt::S32K_libuavcan_ISR_handler(1u); }
 #endif
 
 #if defined(MCU_S32K148)
-    void CAN2_ORed_0_15_MB_IRQHandler() { libuavcan::media::S32K::FleCAN_interrupt::S32K_libuavcan_ISR_handler(2u); }
+    void CAN2_ORed_0_15_MB_IRQHandler() { libuavcan::media::S32K::FlexCAN_interrupt::S32K_libuavcan_ISR_handler(2u); }
 #endif
 }
