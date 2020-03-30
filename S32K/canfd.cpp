@@ -10,16 +10,12 @@
  * CAN-FD at 4Mbit/s data phase and 1Mbit/s in nominal phase.
  */
 
-#include "libuavcan/driver/include/s32k_libuavcan.hpp"
+#include "canfd.hpp"
 
 namespace libuavcan
 {
 namespace media
 {
-/**
- * @namespace S32K
- * Microcontroller-specific constants, variables and non-mutating helper functions for the use of the FlexCAN peripheral
- */
 namespace S32K
 {
 /** Number of capable CAN-FD FlexCAN instances */
@@ -152,7 +148,7 @@ Result flagPollTimeout_Clear(volatile std::uint32_t& flagRegister, std::uint32_t
     return Result::Failure;
 }
 
-class FleCAN_interrupt : private S32K_InterfaceGroup
+class FleCAN_interrupt : private InterfaceGroup
 {
 private:
     /**
@@ -170,7 +166,7 @@ private:
     static time::Monotonic resolve_Timestamp(std::uint64_t frame_timestamp, std::uint8_t instance)
     {
         /* Harvest the peripheral's current timestamp, this is the 16-bit overflowing source clock */
-        std::uint64_t FlexCAN_timestamp = S32K::FlexCAN[instance]->TIMER;
+        std::uint64_t FlexCAN_timestamp = FlexCAN[instance]->TIMER;
 
         /* Get an non-overflowing 64-bit timestamp, this is the target clock source */
         std::uint64_t target_source = static_cast<std::uint64_t>(
@@ -204,21 +200,21 @@ public:
         std::uint8_t MB_index = 0;
 
         /* Check which RX MB caused the interrupt (0b1111100) mask for 2nd-6th MB */
-        switch (S32K::FlexCAN[instance]->IFLAG1 & 124)
+        switch (FlexCAN[instance]->IFLAG1 & 124)
         {
-        case S32K::MessageBuffer2:
+        case MessageBuffer2:
             MB_index = 2u; /* Case for 2nd MB */
             break;
-        case S32K::MessageBuffer3:
+        case MessageBuffer3:
             MB_index = 3u; /* Case for 3th MB */
             break;
-        case S32K::MessageBuffer4:
+        case MessageBuffer4:
             MB_index = 4u; /* Case for 4th MB */
             break;
-        case S32K::MessageBuffer5:
+        case MessageBuffer5:
             MB_index = 5u; /* Case for 5th MB */
             break;
-        case S32K::MessageBuffer6:
+        case MessageBuffer6:
             MB_index = 6u; /* Case for 6th MB */
             break;
         }
@@ -227,24 +223,24 @@ public:
         if (MB_index)
         {
             /* Receive a frame only if the buffer its under its capacity */
-            if (S32K::g_frame_ISRbuffer[instance].size() <= S32K::Frame_Capacity)
+            if (g_frame_ISRbuffer[instance].size() <= Frame_Capacity)
             {
                 /* Harvest the Message buffer, read of the control and status word locks the MB */
 
                 /* Get the raw DLC from the message buffer that received a frame */
                 std::uint32_t dlc_ISR_raw =
-                    ((S32K::FlexCAN[instance]->RAMn[MB_index * S32K::MB_Size_Words]) & CAN_WMBn_CS_DLC_MASK) >>
+                    ((FlexCAN[instance]->RAMn[MB_index * MB_Size_Words]) & CAN_WMBn_CS_DLC_MASK) >>
                     CAN_WMBn_CS_DLC_SHIFT;
 
                 /* Create CAN::FrameDLC type variable from the raw dlc */
                 CAN::FrameDLC dlc_ISR = CAN::FrameDLC(dlc_ISR_raw);
 
                 /* Convert from dlc to data length in bytes */
-                std::uint8_t payloadLength_ISR = S32K_InterfaceGroup::FrameType::dlcToLength(dlc_ISR);
+                std::uint8_t payloadLength_ISR = InterfaceGroup::FrameType::dlcToLength(dlc_ISR);
 
                 /* Get the id */
                 std::uint32_t id_ISR =
-                    (S32K::FlexCAN[instance]->RAMn[MB_index * S32K::MB_Size_Words + 1]) & CAN_WMBn_ID_ID_MASK;
+                    (FlexCAN[instance]->RAMn[MB_index * MB_Size_Words + 1]) & CAN_WMBn_ID_ID_MASK;
 
                 /* Array for harvesting the received frame's payload */
                 std::uint32_t data_ISR_word[(payloadLength_ISR >> 2) + std::min(1, (payloadLength_ISR & 0x3))];
@@ -256,13 +252,13 @@ public:
                      i < (payloadLength_ISR >> 2) + std::min(1, static_cast<std::uint8_t>(payloadLength_ISR) & 0x3);
                      i++)
                 {
-                    REV_BYTES_32(S32K::FlexCAN[instance]
-                                     ->RAMn[MB_index * S32K::MB_Size_Words + S32K::MB_Data_Offset + i],
+                    REV_BYTES_32(FlexCAN[instance]
+                                     ->RAMn[MB_index * MB_Size_Words + MB_Data_Offset + i],
                                  data_ISR_word[i]);
                 }
 
                 /* Harvest the frame's 16-bit hardware timestamp */
-                std::uint64_t MB_timestamp = S32K::FlexCAN[instance]->RAMn[MB_index * S32K::MB_Size_Words] & 0xFFFF;
+                std::uint64_t MB_timestamp = FlexCAN[instance]->RAMn[MB_index * MB_Size_Words] & 0xFFFF;
 
                 /* Instantiate monotonic object form a resolved timestamp */
                 time::Monotonic timestamp_ISR = resolve_Timestamp(MB_timestamp, instance);
@@ -274,25 +270,24 @@ public:
                                                                     timestamp_ISR);
 
                 /* Insert the frame into the queue */
-                S32K::g_frame_ISRbuffer[instance].push_back(FrameISR);
+                g_frame_ISRbuffer[instance].push_back(FrameISR);
             }
             else
             {
                 /* Increment the number of discarded frames due to full RX dequeue */
-                S32K::g_discarded_frames_count[instance]++;
+                g_discarded_frames_count[instance]++;
             }
 
             /* Clear MB interrupt flag (write 1 to clear)*/
-            S32K::FlexCAN[instance]->IFLAG1 |= (1u << MB_index);
+            FlexCAN[instance]->IFLAG1 |= (1u << MB_index);
         }
 
         /* Enable interrupts back */
         ENABLE_INTERRUPTS()
     }
 };
-}  // END namespace S32K
 
-Result S32K_InterfaceGroup::messageBuffer_Transmit(std::uint_fast8_t iface_index,
+Result InterfaceGroup::messageBuffer_Transmit(std::uint_fast8_t iface_index,
                                                    std::uint8_t      TX_MB_index,
                                                    const FrameType&  frame)
 {
@@ -313,11 +308,11 @@ Result S32K_InterfaceGroup::messageBuffer_Transmit(std::uint_fast8_t iface_index
         /* FlexCAN natively transmits the bytes in big-endian order, in order to transmit little-endian for UAVCAN,
          * a byte swap is required */
         REV_BYTES_32(native_FrameData[i],
-                     S32K::FlexCAN[iface_index]->RAMn[TX_MB_index * S32K::MB_Size_Words + S32K::MB_Data_Offset + i]);
+                     FlexCAN[iface_index]->RAMn[TX_MB_index * MB_Size_Words + MB_Data_Offset + i]);
     }
 
     /* Fill up frame ID */
-    S32K::FlexCAN[iface_index]->RAMn[TX_MB_index * S32K::MB_Size_Words + 1] = frame.id & CAN_WMBn_ID_ID_MASK;
+    FlexCAN[iface_index]->RAMn[TX_MB_index * MB_Size_Words + 1] = frame.id & CAN_WMBn_ID_ID_MASK;
 
     /* Fill up word 0 of frame and transmit it
      * Extended Data Length       (EDL) = 1
@@ -330,26 +325,26 @@ Result S32K_InterfaceGroup::messageBuffer_Transmit(std::uint_fast8_t iface_index
      * Data Length Code           (DLC) = frame's dlc 
      * Counter Time Stamp  (TIME STAMP) = 0 ( Handled by hardware )
      */
-    S32K::FlexCAN[iface_index]->RAMn[TX_MB_index * S32K::MB_Size_Words] =
+    FlexCAN[iface_index]->RAMn[TX_MB_index * MB_Size_Words] =
         CAN_RAMn_DATA_BYTE_1(dlc) | CAN_WMBn_CS_DLC(frame.getDLC()) | CAN_RAMn_DATA_BYTE_0(0xCC);
 
     /* After a succesful transmission the interrupt flag of the corresponding message buffer is set, poll with
      * timeout for it */
-    Result Status = S32K::flagPollTimeout_Set(S32K::FlexCAN[iface_index]->IFLAG1, 1 << TX_MB_index);
+    Result Status = flagPollTimeout_Set(FlexCAN[iface_index]->IFLAG1, 1 << TX_MB_index);
 
     /* Clear the flag previously polled (W1C register) */
-    S32K::FlexCAN[iface_index]->IFLAG1 |= 1u << TX_MB_index;
+    FlexCAN[iface_index]->IFLAG1 |= 1u << TX_MB_index;
 
     /* Return successful transmission request status */
     return Status;
 }
 
-std::uint_fast8_t S32K_InterfaceGroup::getInterfaceCount() const
+std::uint_fast8_t InterfaceGroup::getInterfaceCount() const
 {
-    return S32K::CANFD_Count;
+    return CANFD_Count;
 }
 
-Result S32K_InterfaceGroup::write(std::uint_fast8_t interface_index,
+Result InterfaceGroup::write(std::uint_fast8_t interface_index,
                                   const FrameType (&frames)[TxFramesLen],
                                   std::size_t  frames_len,
                                   std::size_t& out_frames_written)
@@ -358,17 +353,17 @@ Result S32K_InterfaceGroup::write(std::uint_fast8_t interface_index,
     Result Status = Result::BufferFull;
 
     /* Input validation */
-    if ((frames_len > TxFramesLen) || (interface_index > S32K::CANFD_Count))
+    if ((frames_len > TxFramesLen) || (interface_index > CANFD_Count))
     {
         Status = Result::BadArgument;
     }
 
     /* Poll the Inactive Message Buffer and Valid Priority Status flags before checking for free MB's */
-    if ((S32K::FlexCAN[interface_index - 1]->ESR2 & CAN_ESR2_IMB_MASK) &&
-        (S32K::FlexCAN[interface_index - 1]->ESR2 & CAN_ESR2_VPS_MASK))
+    if ((FlexCAN[interface_index - 1]->ESR2 & CAN_ESR2_IMB_MASK) &&
+        (FlexCAN[interface_index - 1]->ESR2 & CAN_ESR2_VPS_MASK))
     {
         /* Look for the lowest number free MB */
-        std::uint8_t mb_index = (S32K::FlexCAN[interface_index - 1]->ESR2 & CAN_ESR2_LPTM_MASK) >> CAN_ESR2_LPTM_SHIFT;
+        std::uint8_t mb_index = (FlexCAN[interface_index - 1]->ESR2 & CAN_ESR2_LPTM_MASK) >> CAN_ESR2_LPTM_SHIFT;
 
         /* Proceed with the tranmission */
         Status = messageBuffer_Transmit(interface_index - 1, mb_index, frames[0]);
@@ -381,7 +376,7 @@ Result S32K_InterfaceGroup::write(std::uint_fast8_t interface_index,
     return Status;
 }
 
-Result S32K_InterfaceGroup::read(std::uint_fast8_t interface_index,
+Result InterfaceGroup::read(std::uint_fast8_t interface_index,
                                  FrameType (&out_frames)[RxFramesLen],
                                  std::size_t& out_frames_read)
 {
@@ -390,7 +385,7 @@ Result S32K_InterfaceGroup::read(std::uint_fast8_t interface_index,
     out_frames_read = 0;
 
     /* Input validation */
-    if (interface_index > S32K::CANFD_Count)
+    if (interface_index > CANFD_Count)
     {
         Status = Result::BadArgument;
     }
@@ -398,13 +393,13 @@ Result S32K_InterfaceGroup::read(std::uint_fast8_t interface_index,
     if (isSuccess(Status))
     {
         /* Check if the ISR buffer isn't empty */
-        if (!S32K::g_frame_ISRbuffer[interface_index - 1].empty())
+        if (!g_frame_ISRbuffer[interface_index - 1].empty())
         {
             /* Get the front element of the queue buffer */
-            out_frames[0] = S32K::g_frame_ISRbuffer[interface_index - 1].front();
+            out_frames[0] = g_frame_ISRbuffer[interface_index - 1].front();
 
             /* Pop the front element of the queue buffer */
-            S32K::g_frame_ISRbuffer[interface_index - 1].pop_front();
+            g_frame_ISRbuffer[interface_index - 1].pop_front();
 
             /* Default RX number of frames read at once by this implementation is 1 */
             out_frames_read = RxFramesLen;
@@ -418,24 +413,24 @@ Result S32K_InterfaceGroup::read(std::uint_fast8_t interface_index,
     return Status;
 }
 
-Result S32K_InterfaceGroup::reconfigureFilters(const typename FrameType::Filter* filter_config,
+Result InterfaceGroup::reconfigureFilters(const typename FrameType::Filter* filter_config,
                                                std::size_t                       filter_config_length)
 {
     /* Initialize return value status */
     Result Status = Result::Success;
 
     /* Input validation */
-    if (filter_config_length > S32K::Filter_Count)
+    if (filter_config_length > Filter_Count)
     {
         Status = Result::BadArgument;
     }
 
     if (isSuccess(Status))
     {
-        for (std::uint8_t i = 0; i < S32K::CANFD_Count; i++)
+        for (std::uint8_t i = 0; i < CANFD_Count; i++)
         {
             /* Enter freeze mode for filter reconfiguration */
-            S32K::FlexCAN[i]->MCR |= (CAN_MCR_HALT_MASK | CAN_MCR_FRZ_MASK);
+            FlexCAN[i]->MCR |= (CAN_MCR_HALT_MASK | CAN_MCR_FRZ_MASK);
 
             /* Block for freeze mode entry, halts any transmission or reception */
             if (isSuccess(Status))
@@ -443,19 +438,19 @@ Result S32K_InterfaceGroup::reconfigureFilters(const typename FrameType::Filter*
                 /* Reset all previous filter configurations */
                 for (std::uint8_t j = 0; j < CAN_RAMn_COUNT; j++)
                 {
-                    S32K::FlexCAN[i]->RAMn[j] = 0;
+                    FlexCAN[i]->RAMn[j] = 0;
                 }
 
                 /* Clear the reception masks before configuring the new ones needed */
                 for (std::uint8_t j = 0; j < CAN_RXIMR_COUNT; j++)
                 {
-                    S32K::FlexCAN[i]->RXIMR[j] = 0;
+                    FlexCAN[i]->RXIMR[j] = 0;
                 }
 
                 for (std::uint8_t j = 0; j < filter_config_length; j++)
                 {
                     /* Setup reception MB's mask from input argument */
-                    S32K::FlexCAN[i]->RXIMR[j + 2] = filter_config[j].mask;
+                    FlexCAN[i]->RXIMR[j + 2] = filter_config[j].mask;
 
                     /* Setup word 0 (4 Bytes) for ith MB
                      * Extended Data Length      (EDL) = 1
@@ -468,25 +463,25 @@ Result S32K_InterfaceGroup::reconfigureFilters(const typename FrameType::Filter*
                      * Data Length Code          (DLC) = 0 ( Valid for transmission only )
                      * Counter Time Stamp (TIME STAMP) = 0 ( Handled by hardware )
                      */
-                    S32K::FlexCAN[i]->RAMn[(j + 2) * S32K::MB_Size_Words] =
+                    FlexCAN[i]->RAMn[(j + 2) * MB_Size_Words] =
                         CAN_RAMn_DATA_BYTE_0(0xC4) | CAN_RAMn_DATA_BYTE_1(0x20);
 
                     /* Setup Message buffers 2-7 29-bit extended ID from parameter */
-                    S32K::FlexCAN[i]->RAMn[(j + 2) * S32K::MB_Size_Words + 1] = filter_config[j].id;
+                    FlexCAN[i]->RAMn[(j + 2) * MB_Size_Words + 1] = filter_config[j].id;
                 }
 
                 /* Freeze mode exit request */
-                S32K::FlexCAN[i]->MCR &= ~(CAN_MCR_HALT_MASK | CAN_MCR_FRZ_MASK);
+                FlexCAN[i]->MCR &= ~(CAN_MCR_HALT_MASK | CAN_MCR_FRZ_MASK);
 
                 /* Block for freeze mode exit */
                 if (isSuccess(Status))
                 {
-                    Status = S32K::flagPollTimeout_Clear(S32K::FlexCAN[i]->MCR, CAN_MCR_FRZACK_MASK);
+                    Status = flagPollTimeout_Clear(FlexCAN[i]->MCR, CAN_MCR_FRZACK_MASK);
 
                     /* Block until module is ready */
                     if (isSuccess(Status))
                     {
-                        Status = S32K::flagPollTimeout_Clear(S32K::FlexCAN[i]->MCR, CAN_MCR_NOTRDY_MASK);
+                        Status = flagPollTimeout_Clear(FlexCAN[i]->MCR, CAN_MCR_NOTRDY_MASK);
                     }
                 }
             }
@@ -497,7 +492,7 @@ Result S32K_InterfaceGroup::reconfigureFilters(const typename FrameType::Filter*
     return Status;
 }
 
-Result S32K_InterfaceGroup::select(duration::Monotonic timeout, bool ignore_write_available)
+Result InterfaceGroup::select(duration::Monotonic timeout, bool ignore_write_available)
 {
     /* Obtain timeout from object */
     std::uint32_t cycles_timeout = static_cast<std::uint32_t>(timeout.toMicrosecond());
@@ -518,10 +513,10 @@ Result S32K_InterfaceGroup::select(duration::Monotonic timeout, bool ignore_writ
     while (delta < cycles_timeout)
     {
         /* Poll in each of the available interfaces */
-        for (std::uint8_t i = 0; i < S32K::CANFD_Count; i++)
+        for (std::uint8_t i = 0; i < CANFD_Count; i++)
         {
             /* Poll for available frames in RX FIFO */
-            if (!S32K::g_frame_ISRbuffer[i].empty())
+            if (!g_frame_ISRbuffer[i].empty())
             {
                 return Result::Success;
             }
@@ -530,7 +525,7 @@ Result S32K_InterfaceGroup::select(duration::Monotonic timeout, bool ignore_writ
             else if (!ignore_write_available)
             {
                 /* Poll the Inactive Message Buffer and Valid Priority Status flags for TX availability */
-                if ((S32K::FlexCAN[i]->ESR2 & CAN_ESR2_IMB_MASK) && (S32K::FlexCAN[i]->ESR2 & CAN_ESR2_VPS_MASK))
+                if ((FlexCAN[i]->ESR2 & CAN_ESR2_IMB_MASK) && (FlexCAN[i]->ESR2 & CAN_ESR2_VPS_MASK))
                 {
                     return Result::Success;
                 }
@@ -545,7 +540,7 @@ Result S32K_InterfaceGroup::select(duration::Monotonic timeout, bool ignore_writ
     return Result::SuccessTimeout;
 }
 
-Result S32K_InterfaceManager::startInterfaceGroup(const typename InterfaceGroupType::FrameType::Filter* filter_config,
+Result InterfaceManager::startInterfaceGroup(const typename InterfaceGroupType::FrameType::Filter* filter_config,
                                                   std::size_t            filter_config_length,
                                                   InterfaceGroupPtrType& out_group)
 {
@@ -554,7 +549,7 @@ Result S32K_InterfaceManager::startInterfaceGroup(const typename InterfaceGroupT
     out_group     = nullptr;
 
     /* Input validation */
-    if (filter_config_length > S32K::Filter_Count)
+    if (filter_config_length > Filter_Count)
     {
         Status = Result::BadArgument;
     }
@@ -622,28 +617,28 @@ Result S32K_InterfaceManager::startInterfaceGroup(const typename InterfaceGroupT
     };
 
     /* FlexCAN instances initialization */
-    for (std::uint8_t i = 0; i < S32K::CANFD_Count; i++)
+    for (std::uint8_t i = 0; i < CANFD_Count; i++)
     {
-        PCC->PCCn[S32K::PCC_FlexCAN_Index[i]] = PCC_PCCn_CGC_MASK; /* FlexCAN clock gating */
-        S32K::FlexCAN[i]->MCR |= CAN_MCR_MDIS_MASK;        /* Disable FlexCAN module for clock source selection */
-        S32K::FlexCAN[i]->CTRL1 &= ~CAN_CTRL1_CLKSRC_MASK; /* Clear any previous clock source configuration */
-        S32K::FlexCAN[i]->CTRL1 |= CAN_CTRL1_CLKSRC_MASK;  /* Select SYS_CLK as source (80Mhz)*/
-        S32K::FlexCAN[i]->MCR &= ~CAN_MCR_MDIS_MASK;       /* Enable FlexCAN peripheral */
-        S32K::FlexCAN[i]->MCR |= (CAN_MCR_HALT_MASK | CAN_MCR_FRZ_MASK); /* Request freeze mode etry */
+        PCC->PCCn[PCC_FlexCAN_Index[i]] = PCC_PCCn_CGC_MASK; /* FlexCAN clock gating */
+        FlexCAN[i]->MCR |= CAN_MCR_MDIS_MASK;        /* Disable FlexCAN module for clock source selection */
+        FlexCAN[i]->CTRL1 &= ~CAN_CTRL1_CLKSRC_MASK; /* Clear any previous clock source configuration */
+        FlexCAN[i]->CTRL1 |= CAN_CTRL1_CLKSRC_MASK;  /* Select SYS_CLK as source (80Mhz)*/
+        FlexCAN[i]->MCR &= ~CAN_MCR_MDIS_MASK;       /* Enable FlexCAN peripheral */
+        FlexCAN[i]->MCR |= (CAN_MCR_HALT_MASK | CAN_MCR_FRZ_MASK); /* Request freeze mode etry */
 
         /* Block for freeze mode entry */
-        while (!(S32K::FlexCAN[i]->MCR & CAN_MCR_FRZACK_MASK))
+        while (!(FlexCAN[i]->MCR & CAN_MCR_FRZACK_MASK))
         {
         };
 
         /* Next configurations are only permitted in freeze mode */
-        S32K::FlexCAN[i]->MCR |= CAN_MCR_FDEN_MASK |          /* Habilitate CANFD feature */
+        FlexCAN[i]->MCR |= CAN_MCR_FDEN_MASK |          /* Habilitate CANFD feature */
                                  CAN_MCR_FRZ_MASK;            /* Enable freeze mode entry when HALT bit is asserted */
-        S32K::FlexCAN[i]->CTRL2 |= CAN_CTRL2_ISOCANFDEN_MASK; /* Activate the use of ISO 11898-1 CAN-FD standard */
+        FlexCAN[i]->CTRL2 |= CAN_CTRL2_ISOCANFDEN_MASK; /* Activate the use of ISO 11898-1 CAN-FD standard */
 
         /* CAN Bit Timing (CBT) configuration for a nominal phase of 1 Mbit/s with 80 time quantas,
            in accordance with Bosch 2012 specification, sample point at 83.75% */
-        S32K::FlexCAN[i]->CBT |= CAN_CBT_BTF_MASK |     /* Enable extended bit timing configurations for CAN-FD
+        FlexCAN[i]->CBT |= CAN_CBT_BTF_MASK |     /* Enable extended bit timing configurations for CAN-FD
                                                                                                                  for setting
                                                            up separetely nominal and data phase */
                                  CAN_CBT_EPRESDIV(0) |  /* Prescaler divisor factor of 1 */
@@ -654,7 +649,7 @@ Result S32K_InterfaceManager::startInterfaceGroup(const typename InterfaceGroupT
 
         /* CAN-FD Bit Timing (FDCBT) for a data phase of 4 Mbit/s with 20 time quantas,
            in accordance with Bosch 2012 specification, sample point at 75% */
-        S32K::FlexCAN[i]->FDCBT |=
+        FlexCAN[i]->FDCBT |=
             CAN_FDCBT_FPRESDIV(0) | /* Prescaler divisor factor of 1 */
             CAN_FDCBT_FPROPSEG(7) | /* Propagation semgment of 7 time quantas
                                                                    (only register that doesn't add 1) */
@@ -663,7 +658,7 @@ Result S32K_InterfaceManager::startInterfaceGroup(const typename InterfaceGroupT
             CAN_FDCBT_FRJW(4);      /* Resynchorinzation jump width same as PSEG2 */
 
         /* Additional CAN-FD configurations */
-        S32K::FlexCAN[i]->FDCTRL |= CAN_FDCTRL_FDRATE_MASK | /* Enable bit rate switch in data phase of frame */
+        FlexCAN[i]->FDCTRL |= CAN_FDCTRL_FDRATE_MASK | /* Enable bit rate switch in data phase of frame */
                                     CAN_FDCTRL_TDCEN_MASK |  /* Enable transceiver delay compensation */
                                     CAN_FDCTRL_TDCOFF(5) |   /* Setup 5 cycles for data phase sampling delay */
                                     CAN_FDCTRL_MBDSR0(3);    /* Setup 64 bytes per message buffer (7 MB's) */
@@ -674,18 +669,18 @@ Result S32K_InterfaceManager::startInterfaceGroup(const typename InterfaceGroupT
          */
         for (std::uint8_t j = 0; j < CAN_RAMn_COUNT; j++)
         {
-            S32K::FlexCAN[i]->RAMn[j] = 0;
+            FlexCAN[i]->RAMn[j] = 0;
         }
 
         /* Clear the reception masks before configuring the ones needed */
         for (std::uint8_t j = 0; j < CAN_RXIMR_COUNT; j++)
         {
-            S32K::FlexCAN[i]->RXIMR[j] = 0;
+            FlexCAN[i]->RXIMR[j] = 0;
         }
 
         /* Setup maximum number of message buffers as 7, 0th and 1st for transmission and 2nd-6th for RX */
-        S32K::FlexCAN[i]->MCR &= ~CAN_MCR_MAXMB_MASK; /* Clear previous configuracion of MAXMB, default is 0xF */
-        S32K::FlexCAN[i]->MCR |= CAN_MCR_MAXMB(6) |
+        FlexCAN[i]->MCR &= ~CAN_MCR_MAXMB_MASK; /* Clear previous configuracion of MAXMB, default is 0xF */
+        FlexCAN[i]->MCR |= CAN_MCR_MAXMB(6) |
                                  CAN_MCR_SRXDIS_MASK | /* Disable self-reception of frames if ID matches */
                                  CAN_MCR_IRMQ_MASK;    /* Enable individual message buffer masking */
 
@@ -693,7 +688,7 @@ Result S32K_InterfaceManager::startInterfaceGroup(const typename InterfaceGroupT
         for (std::uint8_t j = 0; j < filter_config_length; j++)
         {
             /* Setup reception MB's mask from input argument */
-            S32K::FlexCAN[i]->RXIMR[j + 2] = filter_config[j].mask;
+            FlexCAN[i]->RXIMR[j + 2] = filter_config[j].mask;
 
             /* Setup word 0 (4 Bytes) for ith MB
              * Extended Data Length      (EDL) = 1
@@ -706,29 +701,29 @@ Result S32K_InterfaceManager::startInterfaceGroup(const typename InterfaceGroupT
              * Data Length Code          (DLC) = 0 ( Valid for transmission only )
              * Counter Time Stamp (TIME STAMP) = 0 ( Handled by hardware )
              */
-            S32K::FlexCAN[i]->RAMn[(j + 2) * S32K::MB_Size_Words] =
+            FlexCAN[i]->RAMn[(j + 2) * MB_Size_Words] =
                 CAN_RAMn_DATA_BYTE_0(0xC4) | CAN_RAMn_DATA_BYTE_1(0x20);
 
             /* Setup Message buffers 2-7 29-bit extended ID from parameter */
-            S32K::FlexCAN[i]->RAMn[(j + 2) * S32K::MB_Size_Words + 1] = filter_config[j].id;
+            FlexCAN[i]->RAMn[(j + 2) * MB_Size_Words + 1] = filter_config[j].id;
         }
 
         /* Enable interrupt in NVIC for FlexCAN reception with default priority (ID = 81) */
-        S32_NVIC->ISER[S32K::FlexCAN_NVIC_Indices[i][0]] = S32K::FlexCAN_NVIC_Indices[i][1];
+        S32_NVIC->ISER[FlexCAN_NVIC_Indices[i][0]] = FlexCAN_NVIC_Indices[i][1];
 
         /* Enable interrupts of reception MB's (0b1111100) */
-        S32K::FlexCAN[i]->IMASK1 = CAN_IMASK1_BUF31TO0M(124);
+        FlexCAN[i]->IMASK1 = CAN_IMASK1_BUF31TO0M(124);
 
         /* Exit from freeze mode */
-        S32K::FlexCAN[i]->MCR &= ~(CAN_MCR_HALT_MASK | CAN_MCR_FRZ_MASK);
+        FlexCAN[i]->MCR &= ~(CAN_MCR_HALT_MASK | CAN_MCR_FRZ_MASK);
 
         /* Block for freeze mode exit */
-        while (S32K::FlexCAN[i]->MCR & CAN_MCR_FRZACK_MASK)
+        while (FlexCAN[i]->MCR & CAN_MCR_FRZACK_MASK)
         {
         };
 
         /* Block for module ready flag */
-        while (S32K::FlexCAN[i]->MCR & CAN_MCR_NOTRDY_MASK)
+        while (FlexCAN[i]->MCR & CAN_MCR_NOTRDY_MASK)
         {
         };
     }
@@ -764,33 +759,33 @@ Result S32K_InterfaceManager::startInterfaceGroup(const typename InterfaceGroupT
     PORTB->PCR[13] |= PORT_PCR_MUX(4);               /* CAN2_TX at PORT B pin 13 */
 #endif
 
-    /* If function ended successfully, return address of object member of type S32K_InterfaceGroup */
-    out_group = &S32K_InterfaceGroupObj_;
+    /* If function ended successfully, return address of object member of type InterfaceGroup */
+    out_group = &InterfaceGroupObj_;
 
-    /* Return code for start of S32K_InterfaceGroup */
+    /* Return code for start of InterfaceGroup */
     return Status;
 }
 
-Result S32K_InterfaceManager::stopInterfaceGroup(InterfaceGroupPtrType& inout_group)
+Result InterfaceManager::stopInterfaceGroup(InterfaceGroupPtrType& inout_group)
 {
     /* Initialize return value status */
     Result Status = Result::Success;
 
     /* FlexCAN module deinitialization */
-    for (std::uint8_t i = 0; i < S32K::CANFD_Count; i++)
+    for (std::uint8_t i = 0; i < CANFD_Count; i++)
     {
         /* Disable FlexCAN module */
-        S32K::FlexCAN[i]->MCR |= CAN_MCR_MDIS_MASK;
+        FlexCAN[i]->MCR |= CAN_MCR_MDIS_MASK;
 
         if (isSuccess(Status))
         {
             /* Poll for Low Power ACK, waits for current transmission/reception to finish */
-            Status = S32K::flagPollTimeout_Set(S32K::FlexCAN[i]->MCR, CAN_MCR_LPMACK_MASK);
+            Status = flagPollTimeout_Set(FlexCAN[i]->MCR, CAN_MCR_LPMACK_MASK);
 
             if (isSuccess(Status))
             {
                 /* Disable FlexCAN clock gating */
-                PCC->PCCn[S32K::PCC_FlexCAN_Index[i]] &= ~PCC_PCCn_CGC_MASK;
+                PCC->PCCn[PCC_FlexCAN_Index[i]] &= ~PCC_PCCn_CGC_MASK;
             }
         }
     }
@@ -819,11 +814,12 @@ Result S32K_InterfaceManager::stopInterfaceGroup(InterfaceGroupPtrType& inout_gr
     return Status;
 }
 
-std::size_t S32K_InterfaceManager::getMaxFrameFilters() const
+std::size_t InterfaceManager::getMaxFrameFilters() const
 {
-    return S32K::Filter_Count;
+    return Filter_Count;
 }
 
+}  // END namespace S32K
 }  // END namespace media
 }  // END namespace libuavcan
 

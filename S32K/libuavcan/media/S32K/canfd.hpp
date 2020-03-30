@@ -11,8 +11,8 @@
  * CAN-FD at 4Mbit/s data phase and 1Mbit/s in nominal phase.
  */
 
-#ifndef S32K_LIBUAVCAN_HPP_INCLUDED
-#define S32K_LIBUAVCAN_HPP_INCLUDED
+#ifndef CANFD_HPP_INCLUDED
+#define CANFD_HPP_INCLUDED
 
 /** Driver build configurations file */
 #include "build_config.hpp"
@@ -53,6 +53,12 @@ namespace libuavcan
 namespace media
 {
 /**
+ * @namespace S32K
+ * Microcontroller-specific constants, variables and non-mutating helper functions for the use of the FlexCAN peripheral
+ */
+namespace S32K
+{    
+/**
  * Implementation of the methods from libuavcan's media layer abstracct class InterfaceGroup,
  * with the template arguments listed below; for further details of this interface class,
  * refer to the template declaration in libuavcan/media/interface.hpp
@@ -62,7 +68,7 @@ namespace media
  * MaxTxFrames = 1 (default)
  * MaxRxFrames = 1 (default)
  */
-class S32K_InterfaceGroup : public InterfaceGroup<CAN::Frame<CAN::TypeFD::MaxFrameSizeBytes>>
+class InterfaceGroup : public media::InterfaceGroup<media::CAN::Frame<media::CAN::TypeFD::MaxFrameSizeBytes>>
 {
 private:
     /**
@@ -141,11 +147,10 @@ public:
  * InterfaceGroupT    = S32K_InterfaceGroup  (previously declared class in the file)
  * InterfaceGroupPtrT = S32K_InterfaceGroup* (raw pointer)
  */
-class S32K_InterfaceManager : public InterfaceManager<S32K_InterfaceGroup, S32K_InterfaceGroup*>
-{
+class InterfaceManager : public media::InterfaceManager<InterfaceGroup, InterfaceGroup*>{
 private:
     /** S32K_InterfaceGroup type object member, which address is used in the factory method next */
-    InterfaceGroupType S32K_InterfaceGroupObj_;
+    InterfaceGroupType InterfaceGroupObj_;
 
 public:
     /**
@@ -182,7 +187,8 @@ public:
     virtual std::size_t getMaxFrameFilters() const override;
 };
 
+}  // END namespace S32K
 }  // END namespace media
 }  // END namespace libuavcan
 
-#endif  // S32K_LIBUAVCAN_HPP_INCLUDED
+#endif  // CANFD_HPP_INCLUDED
