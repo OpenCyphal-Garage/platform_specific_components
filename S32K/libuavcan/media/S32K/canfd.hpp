@@ -128,8 +128,8 @@ public:
      * core clock sources to the Normal RUN profile,
      * @param [in]   filter_config         The filtering to apply equally to all FlexCAN instances.
      * @param [in]   filter_config_length  The length of the @p filter_config argument.
-     * @param [out]  out_group             A pointer to set to the started group. This will be nullptr if the start method
-     *                               fails.
+     * @param [out]  out_group             A pointer to set to the started group. This will be nullptr if the start
+     * method fails.
      * @return libuavcan::Result::Success     if the group was successfully started and a valid pointer was returned.
      * @return libuavcan::Result::Failure     if the initialization fails at some point.
      *         The caller should assume that @p out_group is an invalid pointer if any failure is returned.
