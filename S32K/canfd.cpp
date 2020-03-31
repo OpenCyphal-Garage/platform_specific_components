@@ -834,22 +834,25 @@ Result InterfaceManager::stopInterfaceGroup(InterfaceGroupPtrType& inout_group)
     /* Reset LPIT timer peripheral, (resets all except the MCR register) */
     LPIT0->MCR |= LPIT_MCR_SW_RST(1);
 
-    /* Verify that the timer did reset (locked at 0xFFFFFFFF) */
-    while (LPIT0->TMR[0].CVAL != LPIT_TMR_CVAL_TMR_CUR_VAL_MASK)
+     /* Verify that the timer did reset (locked at 0xFFFFFFFF) */
+    if (LPIT0->TMR[0].CVAL != LPIT_TMR_CVAL_TMR_CUR_VAL_MASK)
     {
-    };
+    	Status = Result::Failure;
+    }
+    else
+    {
+        /* Clear the reset bit since it isn't cleared automatically */
+        LPIT0->MCR &= ~LPIT_MCR_SW_RST_MASK;
 
-    /* Clear the reset bit since it isn't cleared automatically */
-    LPIT0->MCR &= ~LPIT_MCR_SW_RST_MASK;
+        /* Disable the clock to the LPIT's timers */
+        LPIT0->MCR &= ~LPIT_MCR_M_CEN_MASK;
 
-    /* Disable the clock to the LPIT's timers */
-    LPIT0->MCR &= ~LPIT_MCR_M_CEN_MASK;
+        /* Disable LPIT clock gating */
+        PCC->PCCn[PCC_LPIT_INDEX] &= ~PCC_PCCn_CGC_MASK;
 
-    /* Disable LPIT clock gating */
-    PCC->PCCn[PCC_LPIT_INDEX] &= ~PCC_PCCn_CGC_MASK;
-
-    /* Assign to null the pointer output argument */
-    inout_group = nullptr;
+        /* Assign to null the pointer output argument */
+        inout_group = nullptr;
+    }
 
     /* Return status code */
     return Status;
