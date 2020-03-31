@@ -4,7 +4,7 @@
  * Author: Abraham Rodriguez <abraham.rodriguez@nxp.com>
  */
 
-/* 
+/*
  * Source driver file for the media layer of Libuavcan v1 targeting
  * the NXP S32K14 family of automotive grade MCU's running
  * CAN-FD at 4Mbit/s data phase and 1Mbit/s in nominal phase.
@@ -18,7 +18,7 @@
 #    define UAVCAN_NODE_BOARD_USED 1
 #endif
 
-/* 
+/*
  * Include desired target S32K14x memory map header file dependency,
  * defaults to S32K146 from NXP's UCANS32K146 board
  */
@@ -38,7 +38,7 @@
 /* Interface class declarations for the current S32K driver */
 #include "libuavcan/media/S32K/canfd.hpp"
 
-/* 
+/*
  * Preprocessor conditionals for deducing the number of CANFD FlexCAN instances in target MCU,
  * this macro is defined inside the desired memory map "S32K14x.h" included header file
  */
@@ -869,20 +869,29 @@ std::size_t InterfaceManager::getMaxFrameFilters() const
 
 extern "C"
 {
-    /* 
+    /*
      * Interrupt service routines handled by hardware in each frame reception, they are installed by the linker
      * in function of the number of instances available in the target MCU, the names match the ones from the defined
      * interrupt vector table from the startup code located in the startup_S32K14x.S file.
      */
-    void CAN0_ORed_0_15_MB_IRQHandler() { libuavcan::media::S32K::FlexCAN_interrupt::S32K_libuavcan_ISR_handler(0u); }
+    void CAN0_ORed_0_15_MB_IRQHandler()
+    {
+        libuavcan::media::S32K::FlexCAN_interrupt::S32K_libuavcan_ISR_handler(0u);
+    }
 
 #if defined(MCU_S32K146) || defined(MCU_S32K148)
     /* Interrupt for the 1st FlexCAN instance if available */
-    void CAN1_ORed_0_15_MB_IRQHandler() { libuavcan::media::S32K::FlexCAN_interrupt::S32K_libuavcan_ISR_handler(1u); }
+    void CAN1_ORed_0_15_MB_IRQHandler()
+    {
+        libuavcan::media::S32K::FlexCAN_interrupt::S32K_libuavcan_ISR_handler(1u);
+    }
 #endif
 
 #if defined(MCU_S32K148)
     /* Interrupt for the 2nd FlexCAN instance if available */
-    void CAN2_ORed_0_15_MB_IRQHandler() { libuavcan::media::S32K::FlexCAN_interrupt::S32K_libuavcan_ISR_handler(2u); }
+    void CAN2_ORed_0_15_MB_IRQHandler()
+    {
+        libuavcan::media::S32K::FlexCAN_interrupt::S32K_libuavcan_ISR_handler(2u);
+    }
 #endif
 }

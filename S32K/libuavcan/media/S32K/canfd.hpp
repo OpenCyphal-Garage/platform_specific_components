@@ -4,7 +4,7 @@
  * Author: Abraham Rodriguez <abraham.rodriguez@nxp.com>
  */
 
-/** 
+/**
  * @file
  * Header driver file for the media layer of Libuavcan v1 targeting
  * the NXP S32K14 family of automotive grade MCU's running
@@ -18,14 +18,14 @@ namespace libuavcan
 {
 namespace media
 {
-/** 
+/**
  * @namespace S32K
  * Microcontroller-specific Interface classes, constants, variables and helper functions that make use
  * of the FlexCAN and LPIT peripherals for the current driver.
  */
 namespace S32K
 {
-/** 
+/**
  * @class
  * Implementation of the methods from libuavcan's media layer abstracct class InterfaceGroup,
  * with the template arguments listed below; for further details of this interface class,
@@ -49,7 +49,7 @@ private:
     Result messageBuffer_Transmit(std::uint_fast8_t iface_index, std::uint8_t TX_MB_index, const FrameType& frame);
 
 public:
-    /** @fn 
+    /** @fn
      * Get the number of CAN-FD capable FlexCAN modules in current S32K14 MCU
      * @return 1-* depending of the target MCU.
      */
