@@ -24,6 +24,9 @@
  */
 #include "S32K146.h"
 
+/* S32K driver header file */
+#include "libuavcan/media/S32K/canfd.hpp"
+
 /* libuavcan core header files */
 #include "libuavcan/media/can.hpp"
 #include "libuavcan/media/interfaces.hpp"
