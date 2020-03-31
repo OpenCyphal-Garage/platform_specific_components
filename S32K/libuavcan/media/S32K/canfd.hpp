@@ -14,8 +14,8 @@
 #ifndef CANFD_HPP_INCLUDED
 #define CANFD_HPP_INCLUDED
 
-/* Interface class declarations for the current S32K driver implementation */
-#include "libuavcan/media/S32K/canfd.hpp"
+#include "libuavcan/media/interfaces.hpp"
+#include "libuavcan/media/can.hpp"
 
 namespace libuavcan
 {
