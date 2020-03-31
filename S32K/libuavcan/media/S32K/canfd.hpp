@@ -31,8 +31,8 @@ namespace S32K
  * with the template arguments listed below; for further details of this interface class,
  * refer to the template declaration in libuavcan/media/interface.hpp
  *
- * FrameT = Frame: MTUBytesParam = MaxFrameSizeBytes (64 bytes for CAN-FD)
- *                 FlagBitsCompareMask = 0x00 (default)
+ * FrameT      = Frame with MTUBytesParam = MaxFrameSizeBytes (64 bytes for CAN-FD) and
+ *                    FlagBitsCompareMask = 0x00 (default)
  * MaxTxFrames = 1 (default)
  * MaxRxFrames = 1 (default)
  */
@@ -42,8 +42,8 @@ private:
     /** @fn
      * Helper function for an immediate transmission through an available message buffer
      *
-     * @param  TX_MB_index The index from an already polled available message buffer.
-     * @param  frame       The individual frame being transmitted.
+     * @param [in]  TX_MB_index  The index from an already polled available message buffer.
+     * @param [in]  frame        The individual frame being transmitted.
      * @return libuavcan::Result:Success after a successful transmission request.
      */
     Result messageBuffer_Transmit(std::uint_fast8_t iface_index, std::uint8_t TX_MB_index, const FrameType& frame);
@@ -57,13 +57,13 @@ public:
 
     /** @fn
      * Send a frame through a particular available FlexCAN instance
-     * @param  interface_index  The index of the interface in the group to write the frames to.
-     * @param  frames           1..MaxTxFrames frames to write into the system queues for immediate transmission.
-     * @param  frames_len       The number of frames in the frames array that should be sent
+     * @param [in]  interface_index  The index of the interface in the group to write the frames to.
+     * @param [in]  frames           1..MaxTxFrames frames to write into the system queues for immediate transmission.
+     * @param [in]  frames_len       The number of frames in the frames array that should be sent
      *                          (starting from frame 0).
-     * @param  out_frames_written
+     * @param [out] out_frames_written
      *                          Will return MaxTxFrames in current implementation if the frame was sent successfully
-     * @return libuavcan::Result::Success if all frames were written.
+     * @return libuavcan::Result::Success     if all frames were written.
      * @return libuavcan::Result::BadArgument if interface_index or frames_len are out of bound.
      */
     virtual Result write(std::uint_fast8_t interface_index,
@@ -73,10 +73,10 @@ public:
 
     /** @fn
      * Read from an intermediate ISR Frame buffer of an FlexCAN instance.
-     * @param  interface_index  The index of the interface in the group to read the frames from.
-     * @param  out_frames       A buffer of frames to read.
-     * @param  out_frames_read  On output the number of frames read into the out_frames array.
-     * @return libuavcan::Result::Success If no errors occurred.
+     * @param [in]   interface_index  The index of the interface in the group to read the frames from.
+     * @param [out]  out_frames       A buffer of frames to read.
+     * @param [out]  out_frames_read  On output the number of frames read into the out_frames array.
+     * @return libuavcan::Result::Success     If no errors occurred.
      * @return libuavcan::Result::BadArgument If interface_index is out of bound.
      */
     virtual Result read(std::uint_fast8_t interface_index,
@@ -86,10 +86,10 @@ public:
     /** @fn
      * Reconfigure reception filters for dynamic subscription of nodes, all the previous filter configurations are
      * cleared.
-     * @param  filter_config         The filtering to apply equally to all members of the group.
-     * @param  filter_config_length  The length of the @p filter_config argument.
-     * @return libuavcan::Result::Success if the group's receive filtering was successfully reconfigured.
-     * @return libuavcan::Result::Failure if a register didn't get configured as desired.
+     * @param [in]  filter_config         The filtering to apply equally to all members of the group.
+     * @param [in]  filter_config_length  The length of the @p filter_config argument.
+     * @return libuavcan::Result::Success     if the group's receive filtering was successfully reconfigured.
+     * @return libuavcan::Result::Failure     if a register didn't get configured as desired.
      * @return libuavcan::Result::BadArgument if filter_config_length is out of bound.
      */
     virtual Result reconfigureFilters(const typename FrameType::Filter* filter_config,
@@ -97,12 +97,12 @@ public:
 
     /** @fn
      * Block with timeout for available Message buffers.
-     * @param [in]     timeout                  The amount of time to wait for and available message buffer.
-     * @param [in]     ignore_write_available   If set to true, will check availability only for RX MB's
+     * @param [in]  timeout                 The amount of time to wait for and available message buffer.
+     * @param [in]  ignore_write_available  If set to true, will check availability only for RX MB's
      *
-     * @return  libuavcan::Result::SuccessTimeout if timeout occurred and no required MB's became available.
-     *          libuavcan::Result::Success if an interface is ready for read, and if
-     *          @p ignore_write_available is false, or write.
+     * @return libuavcan::Result::SuccessTimeout if timeout occurred and no required MB's became available.
+     *         libuavcan::Result::Success if an interface is ready for read, and if
+     *         @p ignore_write_available is false, or write.
      */
     virtual Result select(libuavcan::duration::Monotonic timeout, bool ignore_write_available) override;
 };
@@ -126,12 +126,12 @@ public:
     /** @fn
      * Initialize the peripherals needed for the driver in the target MCU, also configures the
      * core clock sources to the Normal RUN profile,
-     * @param  filter_config         The filtering to apply equally to all FlexCAN instances.
-     * @param  filter_config_length  The length of the @p filter_config argument.
-     * @param  out_group             A pointer to set to the started group. This will be nullptr if the start method
+     * @param [in]   filter_config         The filtering to apply equally to all FlexCAN instances.
+     * @param [in]   filter_config_length  The length of the @p filter_config argument.
+     * @param [out]  out_group             A pointer to set to the started group. This will be nullptr if the start method
      *                               fails.
-     * @return libuavcan::Result::Success if the group was successfully started and a valid pointer was returned.
-     * @return libuavcan::Result::Failure if the initialization fails at some point.
+     * @return libuavcan::Result::Success     if the group was successfully started and a valid pointer was returned.
+     * @return libuavcan::Result::Failure     if the initialization fails at some point.
      *         The caller should assume that @p out_group is an invalid pointer if any failure is returned.
      * @return libuavcan::Result::BadArgument if filter_config_length is out of bound.
      */
@@ -144,7 +144,7 @@ public:
      * instances available, waiting for any pending transmission or reception to finish before. Also
      * resets the LPIT timer used for time-stamping, does not deconfigure the core and asynch clock sources.
     ¨* configured from startInterfaceGroup nor the pins.
-     * @param  inout_group Pointer that will be set to null
+     * @param [out]  inout_group Pointer that will be set to null
      * @return libuavcan::Result::Success. If the used peripherals were deinitialized properly.
      */
     virtual Result stopInterfaceGroup(InterfaceGroupPtrType& inout_group) override;

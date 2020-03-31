@@ -3,10 +3,10 @@
  */
 #include <iostream>
 
-#include "libuavcan/media/S32K/s32k_libuavcan.hpp"
+#include "libuavcan/media/S32K/canfd.hpp"
 
 int main()
-{
+    {
     libuavcan::media::S32K::InterfaceManager manager;
     if (manager.getMaxFrameFilters() == 0)
     {
