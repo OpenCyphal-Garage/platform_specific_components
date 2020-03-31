@@ -1,0 +1,19 @@
+#
+# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+
+cmake_minimum_required(VERSION 3.6.0)
+
+project(libuavcan-download NONE)
+
+include(ExternalProject)
+ExternalProject_Add(libuavcan
+  GIT_REPOSITORY    https://github.com/UAVCAN/libuavcan.git
+  GIT_TAG           master
+  SOURCE_DIR        "${CMAKE_CURRENT_BINARY_DIR}/libuavcan-src"
+  BINARY_DIR        ""
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND     ""
+  INSTALL_COMMAND   ""
+  TEST_COMMAND      ""
+)

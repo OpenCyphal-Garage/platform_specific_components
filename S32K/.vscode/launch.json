@@ -1,0 +1,30 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "cppdbg",
+            "name": "(gdb) debug tests",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/build/test_sanity",
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                }
+            ]
+        },
+        {
+            "type": "lldb",
+            "name": "(lldb) debug tests",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/build/test_sanity",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
