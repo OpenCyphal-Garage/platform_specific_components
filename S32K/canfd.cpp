@@ -35,9 +35,6 @@
 /* CMSIS Core for __REV macro use */
 #include "s32_core_cm4.h"
 
-/* Interface class declarations for the current S32K driver */
-#include "libuavcan/media/S32K/canfd.hpp"
-
 /*
  * Preprocessor conditionals for deducing the number of CANFD FlexCAN instances in target MCU,
  * this macro is defined inside the desired memory map "S32K14x.h" included header file
