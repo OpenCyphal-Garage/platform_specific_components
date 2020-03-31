@@ -4,7 +4,7 @@
  * Author: Abraham Rodriguez <abraham.rodriguez@nxp.com>
  */
 
-/**
+/** 
  * @file
  * Header driver file for the media layer of Libuavcan v1 targeting
  * the NXP S32K14 family of automotive grade MCU's running
@@ -14,51 +14,19 @@
 #ifndef CANFD_HPP_INCLUDED
 #define CANFD_HPP_INCLUDED
 
-/** Driver build configurations file */
-#include "build_config.hpp"
-
-/** libuavcan core header files */
-#include "libuavcan/media/can.hpp"
-#include "libuavcan/media/interfaces.hpp"
-#include "libuavcan/platform/memory.hpp"
-
-/** STL queue for the intermediate ISR buffer */
-#include <deque>
-
-/** CMSIS Core for __REV macro use */
-#include "s32_core_cm4.h"
-
-/**
- * Preprocessor conditionals for deducing the number of CANFD FlexCAN instances in target MCU,
- * this macro is defined inside the desired memory map "S32K14x.h" included header file
- */
-#if defined(MCU_S32K142) || defined(MCU_S32K144)
-#    define TARGET_S32K_CANFD_COUNT (1u)
-#    define DISCARD_COUNT_ARRAY 0
-
-#elif defined(MCU_S32K146)
-#    define TARGET_S32K_CANFD_COUNT (2u)
-#    define DISCARD_COUNT_ARRAY 0, 0
-
-#elif defined(MCU_S32K148)
-#    define TARGET_S32K_CANFD_COUNT (3u)
-#    define DISCARD_COUNT_ARRAY 0, 0, 0
-
-#else
-#    error "No NXP S32K compatible MCU header file included"
-#endif
-
 namespace libuavcan
 {
 namespace media
 {
-/**
+/** 
  * @namespace S32K
- * Microcontroller-specific constants, variables and non-mutating helper functions for the use of the FlexCAN peripheral
+ * Microcontroller-specific Interface classes, constants, variables and helper functions that make use
+ * of the FlexCAN and LPIT peripherals for the current driver.
  */
 namespace S32K
 {
-/**
+/** 
+ * @class
  * Implementation of the methods from libuavcan's media layer abstracct class InterfaceGroup,
  * with the template arguments listed below; for further details of this interface class,
  * refer to the template declaration in libuavcan/media/interface.hpp
@@ -71,7 +39,7 @@ namespace S32K
 class InterfaceGroup : public media::InterfaceGroup<media::CAN::Frame<media::CAN::TypeFD::MaxFrameSizeBytes>>
 {
 private:
-    /**
+    /** @fn
      * Helper function for an immediate transmission through an available message buffer
      *
      * @param  TX_MB_index The index from an already polled available message buffer.
@@ -81,13 +49,13 @@ private:
     Result messageBuffer_Transmit(std::uint_fast8_t iface_index, std::uint8_t TX_MB_index, const FrameType& frame);
 
 public:
-    /**
+    /** @fn 
      * Get the number of CAN-FD capable FlexCAN modules in current S32K14 MCU
      * @return 1-* depending of the target MCU.
      */
     virtual std::uint_fast8_t getInterfaceCount() const override;
 
-    /**
+    /** @fn
      * Send a frame through a particular available FlexCAN instance
      * @param  interface_index  The index of the interface in the group to write the frames to.
      * @param  frames           1..MaxTxFrames frames to write into the system queues for immediate transmission.
@@ -103,7 +71,7 @@ public:
                          std::size_t  frames_len,
                          std::size_t& out_frames_written) override;
 
-    /**
+    /** @fn
      * Read from an intermediate ISR Frame buffer of an FlexCAN instance.
      * @param  interface_index  The index of the interface in the group to read the frames from.
      * @param  out_frames       A buffer of frames to read.
@@ -115,7 +83,7 @@ public:
                         FrameType (&out_frames)[RxFramesLen],
                         std::size_t& out_frames_read) override;
 
-    /**
+    /** @fn
      * Reconfigure reception filters for dynamic subscription of nodes, all the previous filter configurations are
      * cleared.
      * @param  filter_config         The filtering to apply equally to all members of the group.
@@ -127,7 +95,7 @@ public:
     virtual Result reconfigureFilters(const typename FrameType::Filter* filter_config,
                                       std::size_t                       filter_config_length) override;
 
-    /**
+    /** @fn
      * Block with timeout for available Message buffers.
      * @param [in]     timeout                  The amount of time to wait for and available message buffer.
      * @param [in]     ignore_write_available   If set to true, will check availability only for RX MB's
@@ -140,6 +108,7 @@ public:
 };
 
 /**
+ * @class
  * Implementation of the methods from libuavcan's media layer abstracct class InterfaceManager,
  * with the template arguments listed below; for further details of this interface class,
  * refer to the template declaration in libuavcan/media/interface.hpp
@@ -150,11 +119,11 @@ public:
 class InterfaceManager : public media::InterfaceManager<InterfaceGroup, InterfaceGroup*>
 {
 private:
-    /** S32K_InterfaceGroup type object member, which address is used in the factory method next */
+    /* S32K_InterfaceGroup type object member, which address is used in the factory method next */
     InterfaceGroupType InterfaceGroupObj_;
 
 public:
-    /**
+    /** @fn
      * Initialize the peripherals needed for the driver in the target MCU, also configures the
      * core clock sources to the Normal RUN profile,
      * @param  filter_config         The filtering to apply equally to all FlexCAN instances.
@@ -170,17 +139,17 @@ public:
                                        std::size_t                                           filter_config_length,
                                        InterfaceGroupPtrType&                                out_group) override;
 
-    /**
+    /** @fn
      * Release and deinitialize the peripherals needed for the current driver, disables all the FlexCAN
-     * instances available, waiting for any pending transmission or reception to finish before, also
-     * resets the LPIT timer used for timestamping, does not deconfigures the core clock sources
-    ¨* configured from startInterfaceGroup neither the pins.
+     * instances available, waiting for any pending transmission or reception to finish before. Also
+     * resets the LPIT timer used for time-stamping, does not deconfigure the core and asynch clock sources.
+    ¨* configured from startInterfaceGroup nor the pins.
      * @param  inout_group Pointer that will be set to null
      * @return libuavcan::Result::Success. If the used peripherals were deinitialized properly.
      */
     virtual Result stopInterfaceGroup(InterfaceGroupPtrType& inout_group) override;
 
-    /**
+    /** @fn
      * Return the number of filters that the current UAVCAN node can support.
      * @return The maximum number of frame filters available for filter groups managed by this object,
      *         i.e. the number of combinations of ID and mask that each FlexCAN instance supports

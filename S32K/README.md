@@ -52,7 +52,17 @@ libuavcan::media::S32K::InterfaceManager demo_Manager;
 libuavcan::media::S32K::InterfaceGroup* demo_InterfacePtr;
 
 /* Initialize the node with the previously defined filtering using factory method */
-status = demo_Manager.startInterfaceGroup(&demo_Filter,Node_Filters_Count,demo_InterfacePtr);
+libuavcan::Result status = demo_Manager.startInterfaceGroup(&demo_Filter, Node_Filters_Count, demo_InterfacePtr);
+
+/* Verify that status is succesful before using demo_InterfacePtr */
+if (libuavcan::isSuccess(status))
+{
+    /* Continue with the use of it's methods */
+}
+else
+{
+    /* Exit */
+}
 ```
 <br/>
 <br/>

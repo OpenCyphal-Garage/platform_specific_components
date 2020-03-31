@@ -7,7 +7,7 @@
 
 int main()
 {
-    libuavcan::media::S32K_InterfaceManager manager;
+    libuavcan::media::S32K::InterfaceManager manager;
     if (manager.getMaxFrameFilters() == 0)
     {
         std::cerr << "InterfaceManager::getMaxFrameFilters() returned 0" << std::endl;
