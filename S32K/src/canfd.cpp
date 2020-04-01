@@ -18,25 +18,25 @@
 #    define UAVCAN_NODE_BOARD_USED 1
 #endif
 
-/*
- * Include desired target S32K14x memory map header file dependency,
- * defaults to S32K146 from NXP's UCANS32K146 board
- */
-#include "S32K146.h"
-
 /* S32K driver header file */
 #include "libuavcan/media/S32K/canfd.hpp"
+
+/* STL queue for the intermediate ISR buffer */
+#include <deque>
 
 /* libuavcan core header files */
 #include "libuavcan/media/can.hpp"
 #include "libuavcan/media/interfaces.hpp"
 #include "libuavcan/platform/memory.hpp"
 
-/* STL queue for the intermediate ISR buffer */
-#include <deque>
-
 /* CMSIS Core for __REV macro use */
 #include "s32_core_cm4.h"
+
+/*
+ * Include desired target S32K14x memory map header file dependency,
+ * defaults to S32K146 from NXP's UCANS32K146 board
+ */
+#include "S32K146.h"
 
 /*
  * Preprocessor conditionals for deducing the number of CANFD FlexCAN instances in target MCU,
@@ -92,9 +92,12 @@ constexpr static std::uint8_t MB_Data_Offset = 2u;
 constexpr static std::uint32_t cycles_timeout = 0xFFFFFF;
 
 /* Frame's reception FIFO as a dequeue with libuavcan's static memory pool, one for each available interface */
-static std::deque<CAN::Frame<CAN::TypeFD::MaxFrameSizeBytes>,
-                  platform::memory::PoolAllocator<Frame_Capacity, sizeof(CAN::Frame<CAN::TypeFD::MaxFrameSizeBytes>)>>
+static std::deque<InterfaceGroup::FrameType,
+                  platform::memory::PoolAllocator<Frame_Capacity, sizeof(InterfaceGroup::FrameType)>>
     g_frame_ISRbuffer[CANFD_Count];
+
+/* Intermediate array for harvesting the received frame's payload in the ISR */
+volatile static std::uint32_t data_ISR_word[InterfaceGroup::FrameType::MTUBytes >> 2u];
 
 /* Counter for the number of discarded messages due to the RX FIFO being full */
 volatile static std::uint32_t g_discarded_frames_count[CANFD_Count] = {DISCARD_COUNT_ARRAY};
@@ -313,7 +316,8 @@ public:
 
                 /* Create Frame object with constructor */
                 CAN::Frame<CAN::TypeFD::MaxFrameSizeBytes> FrameISR(id_ISR,
-                                                                    reinterpret_cast<std::uint8_t*>(data_ISR_word),
+                                                                    reinterpret_cast<std::uint8_t*>(
+                                                                        const_cast<std::uint32_t*>(data_ISR_word)),
                                                                     dlc_ISR,
                                                                     timestamp_ISR);
 
@@ -837,10 +841,10 @@ Result InterfaceManager::stopInterfaceGroup(InterfaceGroupPtrType& inout_group)
     /* Reset LPIT timer peripheral, (resets all except the MCR register) */
     LPIT0->MCR |= LPIT_MCR_SW_RST(1);
 
-     /* Verify that the timer did reset (locked at 0xFFFFFFFF) */
+    /* Verify that the timer did reset (locked at 0xFFFFFFFF) */
     if (LPIT0->TMR[0].CVAL != LPIT_TMR_CVAL_TMR_CUR_VAL_MASK)
     {
-    	Status = Result::Failure;
+        Status = Result::Failure;
     }
     else
     {

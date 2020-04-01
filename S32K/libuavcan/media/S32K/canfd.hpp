@@ -14,8 +14,8 @@
 #ifndef CANFD_HPP_INCLUDED
 #define CANFD_HPP_INCLUDED
 
-#include "libuavcan/media/interfaces.hpp"
 #include "libuavcan/media/can.hpp"
+#include "libuavcan/media/interfaces.hpp"
 
 namespace libuavcan
 {
