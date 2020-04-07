@@ -7,7 +7,7 @@
 /**
  * @file
  * Header driver file for the media layer of Libuavcan v1 targeting
- * the NXP S32K14 family of automotive grade MCU's running
+ * the NXP S32K14 family of automotive grade MCU's, running
  * CAN-FD at 4Mbit/s data phase and 1Mbit/s in nominal phase.
  */
 

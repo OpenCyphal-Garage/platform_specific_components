@@ -25,7 +25,7 @@ endif()
 
 include_directories(
     .
-    ../S32K
+    ../S32K/module
     ${CMAKE_CURRENT_BINARY_DIR}/libuavcan-src/libuavcan/include
 )
 
@@ -73,5 +73,5 @@ set(CMAKE_C_FLAGS
 )
 
 
-add_executable(test_sanity test_sanity.cpp ../S32K/s32k_libuavcan.cpp)
+add_executable(test_sanity test_sanity.cpp ../S32K/module/canfd.cpp)
 add_test(NAME run_test_sanity COMMAND test_sanity)

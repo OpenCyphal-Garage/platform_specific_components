@@ -24,9 +24,7 @@
 /* STL queue for the intermediate ISR buffer */
 #include <deque>
 
-/* libuavcan core header files */
-#include "libuavcan/media/can.hpp"
-#include "libuavcan/media/interfaces.hpp"
+/* libuavcan core header file for static pool allocator */
 #include "libuavcan/platform/memory.hpp"
 
 /* CMSIS Core for __REV macro use */
@@ -97,7 +95,7 @@ static std::deque<InterfaceGroup::FrameType,
     g_frame_ISRbuffer[CANFD_Count];
 
 /* Intermediate array for harvesting the received frame's payload in the ISR */
-volatile static std::uint32_t data_ISR_word[InterfaceGroup::FrameType::MTUBytes >> 2u];
+volatile static std::uint32_t data_ISR_word[InterfaceGroup::FrameType::MTUBytes / 4u];
 
 /* Counter for the number of discarded messages due to the RX FIFO being full */
 volatile static std::uint32_t g_discarded_frames_count[CANFD_Count] = {DISCARD_COUNT_ARRAY};
