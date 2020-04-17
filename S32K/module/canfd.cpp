@@ -544,6 +544,9 @@ Result InterfaceGroup::select(duration::Monotonic timeout, bool ignore_write_ava
 
     /* Initialization of delta variable for comparison */
     volatile std::uint32_t delta = 0;
+    
+    /* Initialize status return value as timeout by default */
+    Result Status = Result::SuccessTimeout;
 
     /* Disable LPIT channel 3 for loading */
     LPIT0->CLRTEN |= LPIT_CLRTEN_CLR_T_EN_3(1);
@@ -563,7 +566,8 @@ Result InterfaceGroup::select(duration::Monotonic timeout, bool ignore_write_ava
             /* Poll for available frames in RX FIFO */
             if (!g_frame_ISRbuffer[i].empty())
             {
-                return Result::Success;
+                Status = Result::Success;
+                break;
             }
 
             /* Check for available message buffers for transmission if ignore_write_available is false */
@@ -572,7 +576,8 @@ Result InterfaceGroup::select(duration::Monotonic timeout, bool ignore_write_ava
                 /* Poll the Inactive Message Buffer and Valid Priority Status flags for TX availability */
                 if ((FlexCAN[i]->ESR2 & CAN_ESR2_IMB_MASK) && (FlexCAN[i]->ESR2 & CAN_ESR2_VPS_MASK))
                 {
-                    return Result::Success;
+                    Status = Result::Success;
+                    break;
                 }
             }
         }
@@ -581,8 +586,8 @@ Result InterfaceGroup::select(duration::Monotonic timeout, bool ignore_write_ava
         delta = LPIT_TMR_CVAL_TMR_CUR_VAL_MASK - (LPIT0->TMR[3].CVAL);
     }
 
-    /* If this section is reached, means timeout occurred and return timeout status */
-    return Result::SuccessTimeout;
+    /* Return status code, if timeout occurred, the status will remain SuccessTimeout as initialized */
+    return Status;
 }
 
 Result InterfaceManager::startInterfaceGroup(const typename InterfaceGroupType::FrameType::Filter* filter_config,
