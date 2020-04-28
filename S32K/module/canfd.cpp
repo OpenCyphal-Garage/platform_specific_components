@@ -372,7 +372,7 @@ Result InterfaceGroup::messageBuffer_Transmit(std::uint_fast8_t iface_index,
      * Counter Time Stamp  (TIME STAMP) = 0 ( Handled by hardware )
      */
     FlexCAN[iface_index]->RAMn[TX_MB_index * MB_Size_Words] =
-        CAN_RAMn_DATA_BYTE_1(0x20) | CAN_WMBn_CS_DLC(frame.getDLC()) | CAN_RAMn_DATA_BYTE_0(0xCC);
+        CAN_RAMn_DATA_BYTE_1(0x20) | CAN_WMBn_CS_DLC(dlc) | CAN_RAMn_DATA_BYTE_0(0xCC);
 
     /* After a succesful transmission the interrupt flag of the corresponding message buffer is set, poll with
      * timeout for it */
