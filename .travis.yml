@@ -1,0 +1,33 @@
+env:
+  - CTEST_OUTPUT_ON_FAILURE=1
+
+matrix:
+  include:
+    # socketcan/libcanard
+    - language: cpp
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-9
+            - g++-9-multilib
+            - gcc-9-multilib
+            - linux-libc-dev:i386
+      env:
+        - CC=gcc-9
+        - CXX=g++-9
+      script:
+        - cd socketcan/libcanard/test/
+
+        # DEBUG
+        - cmake tests -DCMAKE_BUILD_TYPE=Debug
+        - make all VERBOSE=1 && make test
+        - make clean
+
+        # RELEASE
+        - cmake tests -DCMAKE_BUILD_TYPE=Release
+        - make all VERBOSE=1 && make test
+        - make clean
+
+git:
+  depth: false
