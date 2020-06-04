@@ -1,10 +1,15 @@
 env:
   - CTEST_OUTPUT_ON_FAILURE=1
 
+before_script:
+  # Extra module package is needed for vcan (virtual SocketCAN iface).
+  - sudo apt-get install "linux-*-extra-$(uname -r)"
+
 matrix:
   include:
     # socketcan/libcanard
     - language: cpp
+      addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
@@ -17,15 +22,15 @@ matrix:
         - CC=gcc-9
         - CXX=g++-9
       script:
-        - cd socketcan/libcanard/test/
+        - cd socketcan/libcanard/
 
         # DEBUG
-        - cmake tests -DCMAKE_BUILD_TYPE=Debug
+        - cmake test -DCMAKE_BUILD_TYPE=Debug
         - make all VERBOSE=1 && make test
         - make clean
 
         # RELEASE
-        - cmake tests -DCMAKE_BUILD_TYPE=Release
+        - cmake test -DCMAKE_BUILD_TYPE=Release
         - make all VERBOSE=1 && make test
         - make clean
 

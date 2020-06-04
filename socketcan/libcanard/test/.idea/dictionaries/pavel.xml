@@ -6,6 +6,7 @@
       <w>libcanard</w>
       <w>socketcan</w>
       <w>uavcan</w>
+      <w>usec</w>
       <w>vcan</w>
     </words>
   </dictionary>
