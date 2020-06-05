@@ -133,7 +133,7 @@ int16_t socketcanPush(const SocketCANFD fd, const CanardFrame* const frame, cons
         cfd.can_id = frame->extended_can_id | CAN_EFF_FLAG;
         cfd.len    = (uint8_t) frame->payload_size;
         // We set the bit rate switch on the assumption that it will be ignored by non-CAN-FD-capable hardware.
-        cfd.flags  = CANFD_BRS;
+        cfd.flags = CANFD_BRS;
         (void) memcpy(cfd.data, frame->payload, frame->payload_size);
 
         // If the payload is small, use the smaller MTU for compatibility with non-FD sockets.
@@ -201,4 +201,28 @@ int16_t socketcanPop(const SocketCANFD       fd,
         (void) memcpy(payload_buffer, &cfd.data[0], cfd.len);
     }
     return poll_result;
+}
+
+int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const SocketCANFilterConfig* const configs)
+{
+    if (configs == NULL)
+    {
+        return -EINVAL;
+    }
+    if (num_configs > CAN_RAW_FILTER_MAX)
+    {
+        return -EFBIG;
+    }
+
+    struct can_filter cfs[CAN_RAW_FILTER_MAX];
+    for (size_t i = 0; i < num_configs; i++)
+    {
+        cfs[i].can_id   = (configs[i].extended_id & CAN_EFF_MASK) | CAN_EFF_FLAG;
+        cfs[i].can_mask = (configs[i].mask & CAN_EFF_MASK) | CAN_EFF_FLAG | CAN_RTR_FLAG;
+    }
+
+    const int ret =
+        setsockopt(fd, SOL_CAN_RAW, CAN_RAW_FILTER, cfs, (socklen_t)(sizeof(struct can_filter) * num_configs));
+
+    return (ret < 0) ? getNegatedErrno() : 0;
 }

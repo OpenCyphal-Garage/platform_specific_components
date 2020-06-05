@@ -58,6 +58,20 @@ int16_t socketcanPop(const SocketCANFD       fd,
                      void* const             payload_buffer,
                      const CanardMicrosecond timeout_usec);
 
+/// The configuration of a single extended 29-bit data frame acceptance filter.
+/// Bits above the 29-th shall be cleared.
+typedef struct SocketCANFilterConfig
+{
+    uint32_t extended_id;
+    uint32_t mask;
+} SocketCANFilterConfig;
+
+/// Apply the specified acceptance filter configuration.
+/// Note that it is only possible to accept extended-format data frames.
+/// The default configuration is to accept everything.
+/// Returns 0 on success, negated errno on error.
+int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const SocketCANFilterConfig* const configs);
+
 #ifdef __cplusplus
 }
 #endif

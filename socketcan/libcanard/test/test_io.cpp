@@ -64,6 +64,14 @@ TEST_CASE("IO-FD")
     REQUIRE(sa >= 0);
     REQUIRE(sb >= 0);
 
+    const SocketCANFilterConfig fcs = {
+        0x00001234U,
+        0x1FFFFFFFU,
+    };
+    REQUIRE(0 == socketcanFilter(sb, 1, &fcs));
+    REQUIRE(-EFBIG == socketcanFilter(sa, 1'000'000, &fcs));
+    REQUIRE(-EINVAL == socketcanFilter(sa, 1, NULL));
+
     CanardFrame fr{};
     fr.extended_can_id = 0x1234U;
     fr.payload_size    = 13;
