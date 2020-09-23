@@ -210,7 +210,7 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
         // Default filter configuration. Note that ALL filters are available ONLY via CAN1!
         // CAN2 filters are offset by 14.
         // We use 14 filters at most always which simplifies the code and ensures compatibility with all
-        // MCU within the STM32 family.
+        // MCU that use bxCAN.
         // Note: block statement is introduced to contain the scope of fmr (defensive programming).
         {
             uint32_t fmr = BXCAN1->FMR & 0xFFFFC0F1U;
