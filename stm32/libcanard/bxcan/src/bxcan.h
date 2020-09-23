@@ -84,6 +84,9 @@ typedef struct
 /// pre-configured bit rates (typically 1000/500/250/125 kbps) in silent mode until a match is found.
 /// Returns true on success, false if initialization failed (INAK timeout).
 ///
+/// The initial state of the acceptance filters is to accept everything.
+/// Use bxCANConfigureFilters() to override this after the interface is configured.
+///
 /// WARNING: The clock of the CAN module must be enabled before this function is invoked!
 ///          If CAN2 is used, CAN1 must be also enabled!
 ///
