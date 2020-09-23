@@ -173,7 +173,7 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
     // Initial setup.
     // This is executed step by step, skipping further steps if errors occur during
     // the initialization process.
-    if (input_ok == true)
+    if (input_ok)
     {
         bxcan_base->IER = 0U;                 // We need no interrupts
         bxcan_base->MCR &= ~BXCAN_MCR_SLEEP;  // Exit sleep mode
