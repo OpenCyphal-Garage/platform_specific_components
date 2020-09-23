@@ -583,7 +583,7 @@ bool bxCANPop(const uint8_t   iface_index,          //
         // This function must be polled periodically, so we use this opportunity to do it.
         processErrorStatus(bxcan_base, error_iface);
 
-        static volatile uint32_t* RFxR[2];
+        volatile uint32_t* const RFxR[2] = {&bxcan_base->RF0R, &bxcan_base->RF1R};
         RFxR[0] = &bxcan_base->RF0R;
         RFxR[1] = &bxcan_base->RF1R;
 
