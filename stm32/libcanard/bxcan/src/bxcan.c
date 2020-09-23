@@ -35,8 +35,7 @@
 
 /// Error trackers, one for each possible CAN interface.
 /// As the bxCANReapError() function only returns a bool, we can keep this as a simple flag.
-static bool g_error_iface0 = false;
-static bool g_error_iface1 = false;
+static bool g_error[2] = false;
 
 /// Converts an extended-ID frame format into the bxCAN TX ID register format.
 static uint32_t convertFrameIDToRegister(const uint32_t id)
@@ -132,15 +131,15 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
     uint8_t             filter_index = 0U;
     if (iface_index == 0U)
     {
-        bxcan_base     = BXCAN1;
-        g_error_iface0 = false;
-        filter_index   = 0U;  // First filter slot for CAN1.
+        bxcan_base   = BXCAN1;
+        g_error[0]   = false;
+        filter_index = 0U;      // First filter slot for CAN1.
     }
     else if ((iface_index == 1U) && (BXCAN_MAX_IFACE_INDEX == 1U))
     {
-        bxcan_base     = BXCAN2;
-        g_error_iface1 = false;
-        filter_index   = (uint8_t) BXCAN_NUM_ACCEPTANCE_FILTERS;  // First filter slot for CAN2.
+        bxcan_base   = BXCAN2;
+        g_error[1]   = false;
+        filter_index = (uint8_t) BXCAN_NUM_ACCEPTANCE_FILTERS;  // First filter slot for CAN2.
     }
     else
     {
@@ -157,11 +156,6 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
     }
 
     // Validate the rest of the inputs.
-    if ((silent != false) && (silent != true))
-    {
-        input_ok = false;
-    }
-
     if ((timings.bit_rate_prescaler < 1U) || (timings.bit_rate_prescaler > 1024U) ||     //
         (timings.max_resync_jump_width < 1U) || (timings.max_resync_jump_width > 4U) ||  //
         (timings.bit_segment_1 < 1U) || (timings.bit_segment_1 > 16U) ||                 //
@@ -173,7 +167,7 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
     // Initial setup.
     // This is executed step by step, skipping further steps if errors occur during
     // the initialization process.
-    if (input_ok == true)
+    if (input_ok)
     {
         bxcan_base->IER = 0U;                 // We need no interrupts
         bxcan_base->MCR &= ~BXCAN_MCR_SLEEP;  // Exit sleep mode
@@ -186,15 +180,15 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
         }
     }
 
-    if (input_ok == true && inak_ok == true)
+    if (input_ok && inak_ok)
     {
         // Hardware initialization (the hardware has already confirmed initialization mode, see above)
         bxcan_base->MCR = BXCAN_MCR_ABOM | BXCAN_MCR_AWUM | BXCAN_MCR_INRQ;  // RM page 648
 
         bxcan_base->BTR = (((timings.max_resync_jump_width - 1U) & 3U) << 24U) |  //
-                          (((timings.bit_segment_1 - 1U) & 15U) << 16U) |
+                          (((timings.bit_segment_1 - 1U) & 15U) << 16U) | //
                           (((timings.bit_segment_2 - 1U) & 7U) << 20U) |  //
-                          ((timings.bit_rate_prescaler - 1U) & 1023U) | ((silent == true) ? BXCAN_BTR_SILM : 0U);
+                          ((timings.bit_rate_prescaler - 1U) & 1023U) | (silent ? BXCAN_BTR_SILM : 0U);
 
         BXCAN_ASSERT(bxcan_base->IER == 0U);  // Making sure the interrupts are indeed disabled
 
@@ -207,7 +201,7 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
         }
     }
 
-    if (input_ok == true && inak_ok == true)
+    if (input_ok && inak_ok)
     {
         // Default filter configuration. Note that ALL filters are available ONLY via CAN1!
         // CAN2 filters are offset by 14.
@@ -314,27 +308,23 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
 
             // Convert the filter to the register format.
             // The special case of a filter entry set to {0, 0} (all bits zero) signifies that the filter should block
-            // all traffic. This is done to improve the API, avoiding a magic number. Detect this, and replace {0, 0} by
-            // the appropriate "block all" filter values {0, 0x1FFFFFFF}. (Setting a {0, 0} filter in the registers
-            // as-such would actually pass all traffic.)
-            if ((cfg->extended_id == 0U) && (cfg->extended_mask == 0U))
-            {
-                id   = 0U;
-                mask = BXCAN_FRAME_EXT_ID_MASK << 3U;
-            }
-            else
+            // all traffic. This is done to improve the API, avoiding a magic number. Detect this, and leave that filter
+            // disabled to block all traffic as there is no set of filter values that achieves this. Eg: {0, 0x1FFFFFFF}
+            // will still allow data with ID = 0 to pass. (Setting a {0, 0} filter in the registers as-such would actually
+            // pass all traffic.)
+            if ((cfg->extended_id != 0U) || (cfg->extended_mask != 0U))     // Only configure and enable non-{0, 0} filters.
             {
                 id   = (cfg->extended_id & BXCAN_FRAME_EXT_ID_MASK) << 3U;
                 mask = (cfg->extended_mask & BXCAN_FRAME_EXT_ID_MASK) << 3U;
+                id  |= BXCAN_RIR_IDE;  // Must be set to accept extended-ID frames. (The mask bit for IDE is already zero.)
+                
+                // Applying the converted representation to the registers.
+                const uint8_t filter_index               = i + filter_index_offset;
+                BXCAN1->FilterRegister[filter_index].FR1 = id;
+                BXCAN1->FilterRegister[filter_index].FR2 = mask;
+
+                BXCAN1->FA1R |= (1U << filter_index);  // Enable the filter.
             }
-            id |= BXCAN_RIR_IDE;  // Must be set to accept extended-ID frames. (The mask bit for IDE is already zero.)
-
-            // Applying the converted representation to the registers.
-            const uint8_t filter_index               = i + filter_index_offset;
-            BXCAN1->FilterRegister[filter_index].FR1 = id;
-            BXCAN1->FilterRegister[filter_index].FR2 = mask;
-
-            BXCAN1->FA1R |= (1U << filter_index);  // Enable the filter.
         }
     }
 }
@@ -345,13 +335,13 @@ bool bxCANReapError(const uint8_t iface_index)
 
     if (iface_index == 0U)
     {
-        out_err        = g_error_iface0;
-        g_error_iface0 = false;
+        out_err    = g_error[0];
+        g_error[0] = false;
     }
     else if (iface_index == 1U)
     {
-        out_err        = g_error_iface1;
-        g_error_iface1 = false;
+        out_err    = g_error[1];
+        g_error[1] = false;
     }
     else
     {
@@ -380,12 +370,12 @@ bool bxCANPush(const uint8_t     iface_index,      //
     if (iface_index == 0U)
     {
         bxcan_base  = BXCAN1;
-        error_iface = &g_error_iface0;
+        error_iface = &g_error[0];
     }
     else if ((iface_index == 1U) && (BXCAN_MAX_IFACE_INDEX == 1U))
     {
         bxcan_base  = BXCAN2;
-        error_iface = &g_error_iface1;
+        error_iface = &g_error[1];
     }
     else
     {
@@ -394,7 +384,7 @@ bool bxCANPush(const uint8_t     iface_index,      //
 
     // Registers any error states for the selected CAN interface. It also handles the requirement
     // to automatically abort all pending transmissions if the CAN controller enters the bus-off state.
-    if (input_ok == true)
+    if (input_ok)
     {
         processErrorStatus(bxcan_base, error_iface);
     }
@@ -416,7 +406,7 @@ bool bxCANPush(const uint8_t     iface_index,      //
     }
 
     // When current_time > deadline, the frame is discarded, TX timeout error is registered, and true is returned.
-    if ((input_ok == true) && (current_time > deadline))
+    if (input_ok && (current_time > deadline))
     {
         *error_iface = true;   // TX timeout error occurred.
         input_ok     = false;  // Skip the further data transmission steps.
@@ -426,7 +416,7 @@ bool bxCANPush(const uint8_t     iface_index,      //
     // Seeking an empty slot, checking if priority inversion would occur if we enqueued now.
     // We can always enqueue safely if all TX mailboxes are free and no transmissions are pending.
     uint8_t tx_mailbox = 0xFF;  // 0xFF indicates no free mailboxes or a priority inversion.
-    if (input_ok == true)
+    if (input_ok)
     {
         static const uint32_t AllTME   = BXCAN_TSR_TME0 | BXCAN_TSR_TME1 | BXCAN_TSR_TME2;
         static const uint32_t TIMEMASK = BXCAN_TDTR_TIME_MASK >> BXCAN_TDTR_TIME_SHIFT;
@@ -514,7 +504,7 @@ bool bxCANPush(const uint8_t     iface_index,      //
 
     // By this time we've proved that a priority inversion would not occur, and we've also
     // found a free TX mailbox. Therefore it is safe to enqueue the frame now.
-    if ((input_ok == true) && (prio_inversion == false))
+    if (input_ok && !prio_inversion)
     {
         volatile BxCANTxMailboxType* const mb = &bxcan_base->TxMailbox[tx_mailbox];
 
@@ -530,11 +520,14 @@ bool bxCANPush(const uint8_t     iface_index,      //
             (void) memcpy(&scratch_data[0], payload, payload_size);  // NOLINT
         }
 
-        mb->TDTR = payload_size;  // DLC equals data length except in CAN FD
+        // TDTR contains the DLC bits. However, there are reserved bits in the register that should not be changed.
+        // Selectively clear and set the DLC bits only.
+        mb->TDTR &= ~BXCAN_TDTR_DLC_MASK;
+        mb->TDTR |= (payload_size & BXCAN_TDTR_DLC_MASK) < BXCAN_TDTR_DLC_SHIFT; // DLC equals data length except in CAN FD.
 
-        mb->TDHR = (((uint32_t) scratch_data[7]) << 24U) | (((uint32_t) scratch_data[6]) << 16U) |
+        mb->TDHR = (((uint32_t) scratch_data[7]) << 24U) | (((uint32_t) scratch_data[6]) << 16U) | //
                    (((uint32_t) scratch_data[5]) << 8U) | (((uint32_t) scratch_data[4]) << 0U);
-        mb->TDLR = (((uint32_t) scratch_data[3]) << 24U) | (((uint32_t) scratch_data[2]) << 16U) |
+        mb->TDLR = (((uint32_t) scratch_data[3]) << 24U) | (((uint32_t) scratch_data[2]) << 16U) | //
                    (((uint32_t) scratch_data[1]) << 8U) | (((uint32_t) scratch_data[0]) << 0U);
 
         mb->TIR = convertFrameIDToRegister(extended_can_id) | BXCAN_TIR_TXRQ;  // Go.
@@ -561,12 +554,12 @@ bool bxCANPop(const uint8_t   iface_index,          //
     if (iface_index == 0U)
     {
         bxcan_base  = BXCAN1;
-        error_iface = &g_error_iface0;
+        error_iface = &g_error[0];
     }
     else if ((iface_index == 1U) && (BXCAN_MAX_IFACE_INDEX == 1U))
     {
         bxcan_base  = BXCAN2;
-        error_iface = &g_error_iface1;
+        error_iface = &g_error[1];
     }
     else
     {
@@ -580,7 +573,7 @@ bool bxCANPop(const uint8_t   iface_index,          //
     }
 
     // Only try to receive data if the input validation was successful.
-    if (input_ok == true)
+    if (input_ok)
     {
         // This function must be polled periodically, so we use this opportunity to do it.
         processErrorStatus(bxcan_base, error_iface);
