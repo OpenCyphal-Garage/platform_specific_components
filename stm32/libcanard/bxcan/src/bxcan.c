@@ -745,7 +745,7 @@ bool bxCANComputeTimings(const uint32_t      peripheral_clock_rate,  //
     }
 
     out_timings->bit_rate_prescaler    = (uint16_t) prescaler;
-    out_timings->max_resync_jump_width = 1U;  // One is recommended by UAVCAN, CANOpen, and DeviceNet
+    out_timings->max_resync_jump_width = 1U;  // One is recommended by DS-015, CANOpen, and DeviceNet
     out_timings->bit_segment_1         = bs1;
     out_timings->bit_segment_2         = bs2;
 
