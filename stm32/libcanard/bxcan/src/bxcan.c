@@ -328,7 +328,7 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
             id |= BXCAN_RIR_IDE;  // Must be set to accept extended-ID frames. (The mask bit for IDE is already zero.)
 
             // Applying the converted representation to the registers.
-            uint8_t filter_index                     = i + filter_index_offset;
+            const uint8_t filter_index               = i + filter_index_offset;
             BXCAN1->FilterRegister[filter_index].FR1 = id;
             BXCAN1->FilterRegister[filter_index].FR2 = mask;
 
