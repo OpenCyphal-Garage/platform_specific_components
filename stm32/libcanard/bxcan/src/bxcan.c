@@ -410,7 +410,7 @@ bool bxCANPush(const uint8_t     iface_index,      //
         input_ok = false;  // NULL pointer payload with non-zero payload size.
     }
 
-    if ((extended_can_id & (uint32_t)(!(BXCAN_FRAME_EXT_ID_MASK))) != 0U)
+    if (extended_can_id > BXCAN_FRAME_EXT_ID_MASK)
     {
         input_ok = false;  // Extended_can_id must be exactly 29 bits, thus 3 MSB of 32-bit word must be 0.
     }
