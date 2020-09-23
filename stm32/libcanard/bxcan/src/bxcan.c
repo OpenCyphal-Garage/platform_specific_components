@@ -13,7 +13,9 @@
 
 /// Configure the system core clock frequency in Hz.
 /// Only used by the busy wait in waitMSRINAKBitStateChange().
-#define BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK 80000000UL
+#if !defined(BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK)
+#    error "Please set BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK to the current system core clock."
+#endif
 
 /// By default, this macro resolves to the standard assert(). The user can redefine this if necessary.
 /// To disable assertion checks completely, make it expand into `(void)(0)`.
