@@ -522,7 +522,7 @@ bool bxCANPush(const uint8_t     iface_index,      //
         // available payload bytes in a zero-filled array of MTU size. This makes the logic
         // for filling the mailbox simpler as the payload pointer can be to variable-size
         // data or even be a NULL pointer.
-        static uint8_t scratch_data[8] = {0};  // Not strictly needed to zero the storage.
+        uint8_t scratch_data[8] = {0};  // Not strictly needed to zero the storage.
         if (payload_size > 0U)                 // The check is needed to avoid calling memcpy() with a NULL pointer.
         {
             // Clang-Tidy raises an error recommending the use of memcpy_s() instead.
