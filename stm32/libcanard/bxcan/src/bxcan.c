@@ -584,8 +584,6 @@ bool bxCANPop(const uint8_t   iface_index,          //
         processErrorStatus(bxcan_base, error_iface);
 
         volatile uint32_t* const RFxR[2] = {&bxcan_base->RF0R, &bxcan_base->RF1R};
-        RFxR[0] = &bxcan_base->RF0R;
-        RFxR[1] = &bxcan_base->RF1R;
 
         // Reading the TX FIFO
         for (uint_fast8_t i = 0U; i < 2U; i++)
@@ -648,7 +646,7 @@ bool bxCANComputeTimings(const uint32_t      peripheral_clock_rate,  //
 
     BXCAN_ASSERT(out_timings != NULL);  // NOLINT
 
-    // Clang-Tidy raises an error recommending the use of memcpy_s() instead.
+    // Clang-Tidy raises an error recommending the use of memset_s() instead.
     // We ignore it because the safe functions are poorly supported; reliance on them may limit the portability.
     memset(out_timings, 0, sizeof(*out_timings));  // NOLINT
 
