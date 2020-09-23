@@ -166,7 +166,7 @@ bool bxCANPop(const uint8_t   iface_index,
               void* const     out_payload);
 
 /// Given the bxCAN macrocell clock rate and the desired bit rate, compute the optimal timing register configuration.
-/// The solution is optimized per the recommendations given in the specifications of UAVCAN, DeviceNet, CANOpen.
+/// The solution is optimized per the recommendations given in the specifications of DS-015, DeviceNet, CANOpen.
 /// Units are SI. Typically, CAN is clocked from PCLK1.
 /// Returns false if the requested bit rate cannot be set up at the current clock rate.
 /// Returns true on success.
