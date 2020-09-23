@@ -7,6 +7,9 @@
 #include <assert.h>
 #include <string.h>
 
+// System core clock frequency in Hz.
+#define BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK 80000000UL  // Processor core clock in Hz.
+
 /// Configure the maximum interface index for the bxCAN hardware available in your MCU.
 /// Must be set to either 0 (only CAN1) or 1 (CAN1 and CAN2).
 #define BXCAN_MAX_IFACE_INDEX 1U
@@ -35,7 +38,11 @@
 
 /// Error trackers, one for each possible CAN interface.
 /// As the bxCANReapError() function only returns a bool, we can keep this as a simple flag.
-static bool g_error[2] = false;
+static bool g_error[2] = {false};
+
+/// Time stamps for TX time-out management. There are three TX mailboxes for each CAN interface.
+/// A zero value means the time stamp is not set (mailbox is not in use).
+static uint64_t g_tx_deadline[(1 + BXCAN_MAX_IFACE_INDEX) * 3] = {0};
 
 /// Converts an extended-ID frame format into the bxCAN TX ID register format.
 static uint32_t convertFrameIDToRegister(const uint32_t id)
@@ -96,7 +103,7 @@ static void processErrorStatus(volatile BxCANType* const bxcan_base,  //
                                bool* const               error_iface)
 {
     BXCAN_ASSERT((bxcan_base == BXCAN1) || (bxcan_base == BXCAN2));
-    BXCAN_ASSERT((error_iface == &g_error_iface0) || (error_iface == &g_error_iface1));
+    BXCAN_ASSERT((error_iface == &g_error[0]) || (error_iface == &g_error[1]));
 
     // Aborting TX transmissions while in bus-off mode.
     // Updating error flag
@@ -133,7 +140,7 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
     {
         bxcan_base   = BXCAN1;
         g_error[0]   = false;
-        filter_index = 0U;      // First filter slot for CAN1.
+        filter_index = 0U;  // First filter slot for CAN1.
     }
     else if ((iface_index == 1U) && (BXCAN_MAX_IFACE_INDEX == 1U))
     {
@@ -186,8 +193,8 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
         bxcan_base->MCR = BXCAN_MCR_ABOM | BXCAN_MCR_AWUM | BXCAN_MCR_INRQ;  // RM page 648
 
         bxcan_base->BTR = (((timings.max_resync_jump_width - 1U) & 3U) << 24U) |  //
-                          (((timings.bit_segment_1 - 1U) & 15U) << 16U) | //
-                          (((timings.bit_segment_2 - 1U) & 7U) << 20U) |  //
+                          (((timings.bit_segment_1 - 1U) & 15U) << 16U) |         //
+                          (((timings.bit_segment_2 - 1U) & 7U) << 20U) |          //
                           ((timings.bit_rate_prescaler - 1U) & 1023U) | (silent ? BXCAN_BTR_SILM : 0U);
 
         BXCAN_ASSERT(bxcan_base->IER == 0U);  // Making sure the interrupts are indeed disabled
@@ -310,14 +317,16 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
             // The special case of a filter entry set to {0, 0} (all bits zero) signifies that the filter should block
             // all traffic. This is done to improve the API, avoiding a magic number. Detect this, and leave that filter
             // disabled to block all traffic as there is no set of filter values that achieves this. Eg: {0, 0x1FFFFFFF}
-            // will still allow data with ID = 0 to pass. (Setting a {0, 0} filter in the registers as-such would actually
-            // pass all traffic.)
-            if ((cfg->extended_id != 0U) || (cfg->extended_mask != 0U))     // Only configure and enable non-{0, 0} filters.
+            // will still allow data with ID = 0 to pass. (Setting a {0, 0} filter in the registers as-such would
+            // actually pass all traffic.)
+            if ((cfg->extended_id != 0U) ||
+                (cfg->extended_mask != 0U))  // Only configure and enable non-{0, 0} filters.
             {
                 id   = (cfg->extended_id & BXCAN_FRAME_EXT_ID_MASK) << 3U;
                 mask = (cfg->extended_mask & BXCAN_FRAME_EXT_ID_MASK) << 3U;
-                id  |= BXCAN_RIR_IDE;  // Must be set to accept extended-ID frames. (The mask bit for IDE is already zero.)
-                
+                id |=
+                    BXCAN_RIR_IDE;  // Must be set to accept extended-ID frames. (The mask bit for IDE is already zero.)
+
                 // Applying the converted representation to the registers.
                 const uint8_t filter_index               = i + filter_index_offset;
                 BXCAN1->FilterRegister[filter_index].FR1 = id;
@@ -359,9 +368,8 @@ bool bxCANPush(const uint8_t     iface_index,      //
                const void* const payload)
 {
     // Error management and reporting flags.
-    bool input_ok       = true;   // Initialize as no errors. Detected errors will set this to false.
-    bool out_status     = false;  // Initialize as failure. It will be set true in case of success.
-    bool prio_inversion = false;
+    bool input_ok   = true;   // Initialize as no errors. Detected errors will set this to false.
+    bool out_status = false;  // Initialize as failure. It will be set true in case of success.
 
     // Select the appropriate CAN interface base address and error flag.
     // If the interface number is invalid, return with an error.
@@ -418,8 +426,7 @@ bool bxCANPush(const uint8_t     iface_index,      //
     uint8_t tx_mailbox = 0xFF;  // 0xFF indicates no free mailboxes or a priority inversion.
     if (input_ok)
     {
-        static const uint32_t AllTME   = BXCAN_TSR_TME0 | BXCAN_TSR_TME1 | BXCAN_TSR_TME2;
-        static const uint32_t TIMEMASK = BXCAN_TDTR_TIME_MASK >> BXCAN_TDTR_TIME_SHIFT;
+        static const uint32_t AllTME = BXCAN_TSR_TME0 | BXCAN_TSR_TME1 | BXCAN_TSR_TME2;
 
         if ((bxcan_base->TSR & AllTME) != AllTME)  // At least one TX mailbox is used, detailed check is needed
         {
@@ -429,24 +436,34 @@ bool bxCANPush(const uint8_t     iface_index,      //
 
             for (uint8_t i = 0U; i < 3U; i++)
             {
-                // Abort the selected mailbox if it is pending and expired. The timeout error is reported.
-                // This frees-up stale slots. The time-out value in the TDTR register is 16 bits.
-                if ((current_time & TIMEMASK) >
-                    ((bxcan_base->TxMailbox[i].TDTR & BXCAN_TDTR_TIME_MASK) >> BXCAN_TDTR_TIME_SHIFT))
+                // TX deadline management.
+                // Abort the selected mailbox if it is busy and its deadline has expired. This frees-up stale
+                // slots and the timeout error is reported.
+                // However, if the slot was not busy, we only reset the deadline to zero, as this only indicates
+                // a previously-sent, idle slot that needs its old deadline zeroed. This is not an error.
+                const uint8_t tx_deadline_idx = i + (iface_index * 3);
+                if ((current_time > g_tx_deadline[tx_deadline_idx]) && (g_tx_deadline[tx_deadline_idx] != 0U))
                 {
-                    if (i == 0U)
+                    // If the slot is active, abort the transmission and report a time-out error.
+                    if (!tme[i])
                     {
-                        bxcan_base->TSR = BXCAN_TSR_ABRQ0;
+                        // Abort the selected mailbox.
+                        if (i == 0U)
+                        {
+                            bxcan_base->TSR = BXCAN_TSR_ABRQ0;
+                        }
+                        if (i == 1U)
+                        {
+                            bxcan_base->TSR = BXCAN_TSR_ABRQ1;
+                        }
+                        if (i == 2U)
+                        {
+                            bxcan_base->TSR = BXCAN_TSR_ABRQ2;
+                        }
+
+                        *error_iface = true;  // TX timeout error occurred.
                     }
-                    if (i == 1U)
-                    {
-                        bxcan_base->TSR = BXCAN_TSR_ABRQ1;
-                    }
-                    if (i == 2U)
-                    {
-                        bxcan_base->TSR = BXCAN_TSR_ABRQ2;
-                    }
-                    *error_iface = true;  // TX timeout error occurred.
+                    g_tx_deadline[tx_deadline_idx] = 0U;  // Clear the TX deadline for the selected mailbox.
                 }
 
                 if (tme[i])  // This TX mailbox is free, we can use it
@@ -461,37 +478,13 @@ bool bxCANPush(const uint8_t     iface_index,      //
                         // Priority inversion would occur! Reject transmission. We do this by insuring that
                         // the tx_mailbox value is set to the trip value of 0xFF and break the search loop.
                         // The priority inversion logic then catches the condition & handles it.
+#if BXCAN_CONFIG_DEBUG_INNER_PRIORITY_INVERSION
+                        BXCAN_ASSERT(!"CAN PRIO INV");  // NOLINT
+#endif
                         tx_mailbox = 0xFF;
                         break;
                     }
                 }
-            }
-
-            if (tx_mailbox == 0xFF)
-            {
-                // All TX mailboxes are busy (this is highly unlikely); at the same time we know that there is no
-                // higher or equal priority frame that is currently pending. Therefore, priority inversion has
-                // just happend (sic!), because we can't enqueue the higher priority frame due to all TX mailboxes
-                // being busy. This scenario is extremely unlikely, because in order for it to happen, the application
-                // would need to transmit 4 (four) or more CAN frames with different CAN ID ordered from high ID to
-                // low ID nearly at the same time. For example:
-                //  1. 0x123        <-- Takes mailbox 0 (or any other)
-                //  2. 0x122        <-- Takes mailbox 2 (or any other)
-                //  3. 0x121        <-- Takes mailbox 1 (or any other)
-                //  4. 0x120        <-- INNER PRIORITY INVERSION HERE (only if all three TX mailboxes are still busy)
-                // This situation is even less likely to cause any noticeable disruptions on the CAN bus. Despite that,
-                // it is better to warn the developer about that during debugging, so we fire an assertion failure here.
-                // It is perfectly safe to remove it.
-                // Note: this error condition (all TX mailboxes busy) also occurs when erroneously sending data to the
-                // TX mailboxes of a non-existing CAN interface. Eg: accessing CAN2 on a device that only has CAN1.
-#if BXCAN_CONFIG_DEBUG_INNER_PRIORITY_INVERSION
-                BXCAN_ASSERT(!"CAN PRIO INV");  // NOLINT
-#endif
-                prio_inversion = true;
-            }
-            else
-            {
-                prio_inversion = false;
             }
         }
         else  // All TX mailboxes are free, use first
@@ -502,18 +495,38 @@ bool bxCANPush(const uint8_t     iface_index,      //
         BXCAN_ASSERT(tx_mailbox < 3U);  // Index check - the value must be correct here
     }
 
+    // If all TX mailboxes are busy (this is highly unlikely); at the same time we know that there is no
+    // higher or equal priority frame that is currently pending. Therefore, priority inversion has just
+    // happend (sic!), because we can't enqueue the higher priority frame due to all TX mailboxes being busy.
+    // This scenario is extremely unlikely, because in order for it to happen, the application would need to
+    // transmit 4 (four) or more CAN frames with different CAN ID ordered from high ID to low ID nearly at
+    // the same time. For example:
+    //  1. 0x123        <-- Takes mailbox 0 (or any other)
+    //  2. 0x122        <-- Takes mailbox 2 (or any other)
+    //  3. 0x121        <-- Takes mailbox 1 (or any other)
+    //  4. 0x120        <-- INNER PRIORITY INVERSION HERE (only if all three TX mailboxes are still busy)
+    // This situation is even less likely to cause any noticeable disruptions on the CAN bus. Despite that,
+    // it is better to warn the developer about that during debugging, so we fire an assertion failure here.
+    // It is perfectly safe to remove it.
+    // Note: this error condition (all TX mailboxes busy) also occurs when erroneously sending data to the
+    // TX mailboxes of a non-existing CAN interface. Eg: accessing CAN2 on a device that only has CAN1.
+
     // By this time we've proved that a priority inversion would not occur, and we've also
-    // found a free TX mailbox. Therefore it is safe to enqueue the frame now.
-    if (input_ok && !prio_inversion)
+    // found a free TX mailbox (this is signalled by tx_mailbox != 0xFF). Therefore it is safe to enqueue
+    // the frame now.
+    if (input_ok && tx_mailbox < 3U)
     {
         volatile BxCANTxMailboxType* const mb = &bxcan_base->TxMailbox[tx_mailbox];
+
+        // Set the TX deadline for the selected mailbox.
+        g_tx_deadline[tx_mailbox + (iface_index * 3)] = deadline;
 
         // The payload can be any length up to the MTU. We first make a local copy of the
         // available payload bytes in a zero-filled array of MTU size. This makes the logic
         // for filling the mailbox simpler as the payload pointer can be to variable-size
         // data or even be a NULL pointer.
         uint8_t scratch_data[8] = {0};  // Not strictly needed to zero the storage.
-        if (payload_size > 0U)                 // The check is needed to avoid calling memcpy() with a NULL pointer.
+        if (payload_size > 0U)          // The check is needed to avoid calling memcpy() with a NULL pointer.
         {
             // Clang-Tidy raises an error recommending the use of memcpy_s() instead.
             // We ignore it because the safe functions are poorly supported; reliance on them may limit the portability.
@@ -521,13 +534,17 @@ bool bxCANPush(const uint8_t     iface_index,      //
         }
 
         // TDTR contains the DLC bits. However, there are reserved bits in the register that should not be changed.
-        // Selectively clear and set the DLC bits only.
-        mb->TDTR &= ~BXCAN_TDTR_DLC_MASK;
-        mb->TDTR |= (payload_size & BXCAN_TDTR_DLC_MASK) < BXCAN_TDTR_DLC_SHIFT; // DLC equals data length except in CAN FD.
+        // Selectively clear and set the DLC bits only. DLC equals data length except in CAN FD.
+        uint32_t tdtr = mb->TDTR;
+        tdtr &= ~((uint32_t) BXCAN_TDTR_DLC_MASK);
+        tdtr |= (payload_size << BXCAN_TDTR_DLC_SHIFT) & (uint32_t) BXCAN_TDTR_DLC_MASK;
+        // TODO: the nicer way above seems to fail at the AND operation???
 
-        mb->TDHR = (((uint32_t) scratch_data[7]) << 24U) | (((uint32_t) scratch_data[6]) << 16U) | //
+        mb->TDTR = tdtr;
+
+        mb->TDHR = (((uint32_t) scratch_data[7]) << 24U) | (((uint32_t) scratch_data[6]) << 16U) |  //
                    (((uint32_t) scratch_data[5]) << 8U) | (((uint32_t) scratch_data[4]) << 0U);
-        mb->TDLR = (((uint32_t) scratch_data[3]) << 24U) | (((uint32_t) scratch_data[2]) << 16U) | //
+        mb->TDLR = (((uint32_t) scratch_data[3]) << 24U) | (((uint32_t) scratch_data[2]) << 16U) |  //
                    (((uint32_t) scratch_data[1]) << 8U) | (((uint32_t) scratch_data[0]) << 0U);
 
         mb->TIR = convertFrameIDToRegister(extended_can_id) | BXCAN_TIR_TXRQ;  // Go.
