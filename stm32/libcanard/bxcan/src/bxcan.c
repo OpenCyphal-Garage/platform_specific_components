@@ -45,8 +45,8 @@
 static bool g_error[2] = {false};
 
 /// Time stamps for TX time-out management. There are three TX mailboxes for each CAN interface.
-/// A zero value means the time stamp is not set (mailbox is not in use).
-static uint64_t g_tx_deadline[(1 + BXCAN_MAX_IFACE_INDEX) * 3] = {0};
+/// An UINT64_MAX value means the time stamp is not set (mailbox is not in use).
+static uint64_t g_tx_deadline[(1 + BXCAN_MAX_IFACE_INDEX) * 3] = {UINT64_MAX};
 
 /// Converts an extended-ID frame format into the bxCAN TX ID register format.
 static uint32_t convertFrameIDToRegister(const uint32_t id)
@@ -72,6 +72,8 @@ static uint32_t convertRegisterToFrameID(const uint32_t id)
 static bool waitMSRINAKBitStateChange(volatile const BxCANType* const bxcan_base,  //
                                       const bool                      target_state)
 {
+    BXCAN_ASSERT((bxcan_base == BXCAN1) || (bxcan_base == BXCAN2));
+
     bool out_status = false;  // Initialize as failure. It will be set true in case of success.
 
     // A properly functioning bus will exhibit 11 consecutive recessive bits at the end of every correct transmission,
@@ -103,6 +105,57 @@ static bool waitMSRINAKBitStateChange(volatile const BxCANType* const bxcan_base
     return out_status;
 }
 
+// Detect TX mailbox slot that have expired and abort them.
+static void abortExpiredTxMailboxes(volatile BxCANType* const bxcan_base,   //
+                                    bool* const               error_iface,  //
+                                    const uint64_t            current_time)
+{
+    BXCAN_ASSERT((bxcan_base == BXCAN1) || (bxcan_base == BXCAN2));
+    BXCAN_ASSERT((error_iface == &g_error[0]) || (error_iface == &g_error[1]));
+
+    // Obtain the busy state of all mailboxes.
+    const bool tme[3U] = {(bxcan_base->TSR & BXCAN_TSR_TME0) != 0U,
+                          (bxcan_base->TSR & BXCAN_TSR_TME1) != 0U,
+                          (bxcan_base->TSR & BXCAN_TSR_TME2) != 0U};
+
+    // Calculate the offset in the deadline table. Either 0 or 3.
+    const uint8_t iface_index_offset = (bxcan_base == BXCAN1) ? 0 : 3;
+
+    // Check the deadline for each active mailbox.
+    for (uint8_t i = 0U; i < 3U; i++)
+    {
+        // Abort the selected mailbox if it is busy and its deadline has expired. This frees-up stale
+        // slots and the timeout error is reported.
+        // However, if the slot was not busy, we only reset the deadline to UINT64_MAX, as this only indicates
+        // a previously-sent, idle slot that needs its old deadline cleared. This is not an error.
+        const uint8_t tx_deadline_idx = i + iface_index_offset;
+        if (current_time > g_tx_deadline[tx_deadline_idx])
+        {
+            g_tx_deadline[tx_deadline_idx] = UINT64_MAX;  // Clear the TX deadline for the selected mailbox.
+
+            // If the slot is active, abort the transmission and report a time-out error.
+            if (!tme[i])
+            {
+                // Abort the selected mailbox.
+                if (i == 0U)
+                {
+                    bxcan_base->TSR |= BXCAN_TSR_ABRQ0;
+                }
+                if (i == 1U)
+                {
+                    bxcan_base->TSR |= BXCAN_TSR_ABRQ1;
+                }
+                if (i == 2U)
+                {
+                    bxcan_base->TSR |= BXCAN_TSR_ABRQ2;
+                }
+
+                *error_iface = true;  // TX timeout error occurred.
+            }
+        }
+    }
+}
+
 static void processErrorStatus(volatile BxCANType* const bxcan_base,  //
                                bool* const               error_iface)
 {
@@ -119,10 +172,24 @@ static void processErrorStatus(volatile BxCANType* const bxcan_base,  //
 
         *error_iface = true;                    // Update the respective error flag for the selected interface.
 
-        // Abort pending transmissions only if we are in bus-off mode.
+        // Abort pending transmissions only if we are in bus-off mode. Also reset the TX mailbox timeouts
+        // for the selected interface.
         if (bxcan_base->ESR & BXCAN_ESR_BOFF)
         {
             bxcan_base->TSR |= BXCAN_TSR_ABRQ0 | BXCAN_TSR_ABRQ1 | BXCAN_TSR_ABRQ2;
+
+            if (bxcan_base == BXCAN1)
+            {
+                g_tx_deadline[0] = UINT64_MAX;
+                g_tx_deadline[1] = UINT64_MAX;
+                g_tx_deadline[2] = UINT64_MAX;
+            }
+            else
+            {
+                g_tx_deadline[3] = UINT64_MAX;
+                g_tx_deadline[4] = UINT64_MAX;
+                g_tx_deadline[5] = UINT64_MAX;
+            }
         }
     }
 }
@@ -459,7 +526,9 @@ bool bxCANPush(const uint8_t     iface_index,      //
         input_ok = false;  // Extended_can_id must be exactly 29 bits, thus 3 MSB of 32-bit word must be 0.
     }
 
-    // When current_time > deadline, the frame is discarded, TX timeout error is registered, and true is returned.
+    // When the frame that should be transmitted is already expired (current_time > deadline), discard it. It would
+    // be rejected at reception, and thus causes undue overhead and bus load. When an expired frame is discarded,
+    // the TX timeout error is registered, and true is returned (the frame is considered sent).
     if (input_ok && (current_time > deadline))
     {
         *error_iface = true;   // TX timeout error occurred.
@@ -469,49 +538,27 @@ bool bxCANPush(const uint8_t     iface_index,      //
 
     // Seeking an empty slot, checking if priority inversion would occur if we enqueued now.
     // We can always enqueue safely if all TX mailboxes are free and no transmissions are pending.
-    uint8_t tx_mailbox = 0xFF;  // 0xFF indicates no free mailboxes or a priority inversion.
+    uint8_t tx_mailbox = 0xFF;  // 0xFF indicates no free mailboxes.
+    bool prio_higher = false;   // false indicates no frame with higher priority.
     if (input_ok)
     {
         static const uint32_t AllTME = BXCAN_TSR_TME0 | BXCAN_TSR_TME1 | BXCAN_TSR_TME2;
 
         if ((bxcan_base->TSR & AllTME) != AllTME)  // At least one TX mailbox is used, detailed check is needed
         {
+            // Abort mailboxes with an expired deadline. This frees-up stale
+            // slots and the timeout error is reported via the &g_error[] flag.
+            abortExpiredTxMailboxes(bxcan_base, error_iface, current_time);
+
+            // Obtain the busy state of all mailboxes, after any stale mailboxes were aborted.
             const bool tme[3U] = {(bxcan_base->TSR & BXCAN_TSR_TME0) != 0U,
                                   (bxcan_base->TSR & BXCAN_TSR_TME1) != 0U,
                                   (bxcan_base->TSR & BXCAN_TSR_TME2) != 0U};
 
+            // Search for free mailboxes.
+            // Mailboxes with priority >= the priority of the new frame are detected.
             for (uint8_t i = 0U; i < 3U; i++)
             {
-                // TX deadline management.
-                // Abort the selected mailbox if it is busy and its deadline has expired. This frees-up stale
-                // slots and the timeout error is reported.
-                // However, if the slot was not busy, we only reset the deadline to zero, as this only indicates
-                // a previously-sent, idle slot that needs its old deadline zeroed. This is not an error.
-                const uint8_t tx_deadline_idx = i + (iface_index * 3);
-                if ((current_time > g_tx_deadline[tx_deadline_idx]) && (g_tx_deadline[tx_deadline_idx] != 0U))
-                {
-                    // If the slot is active, abort the transmission and report a time-out error.
-                    if (!tme[i])
-                    {
-                        // Abort the selected mailbox.
-                        if (i == 0U)
-                        {
-                            bxcan_base->TSR |= BXCAN_TSR_ABRQ0;
-                        }
-                        if (i == 1U)
-                        {
-                            bxcan_base->TSR |= BXCAN_TSR_ABRQ1;
-                        }
-                        if (i == 2U)
-                        {
-                            bxcan_base->TSR |= BXCAN_TSR_ABRQ2;
-                        }
-
-                        *error_iface = true;  // TX timeout error occurred.
-                    }
-                    g_tx_deadline[tx_deadline_idx] = 0U;  // Clear the TX deadline for the selected mailbox.
-                }
-
                 if (tme[i])  // This TX mailbox is free, we can use it
                 {
                     tx_mailbox = i;
@@ -521,16 +568,33 @@ bool bxCANPush(const uint8_t     iface_index,      //
                     if (extended_can_id >= convertRegisterToFrameID(bxcan_base->TxMailbox[i].TIR))
                     {
                         // There's a mailbox whose priority is higher or equal the priority of the new frame.
-                        // Priority inversion would occur! Reject transmission. We do this by insuring that
-                        // the tx_mailbox value is set to the trip value of 0xFF and break the search loop.
-                        // The priority inversion logic then catches the condition & handles it.
-#if BXCAN_CONFIG_DEBUG_INNER_PRIORITY_INVERSION
-                        BXCAN_ASSERT(!"CAN PRIO INV");  // NOLINT
-#endif
-                        tx_mailbox = 0xFF;
-                        break;
+                        // Priority inversion would occur! Reject transmission.
+                        prio_higher = true;
                     }
                 }
+            }
+
+            // If no mailboxes are free and none of the mailboxes have higher priority we have a priority inversion.
+            if ((tx_mailbox == 0xFF) && (prio_higher == false))
+            {
+                // All TX mailboxes are busy (this is highly unlikely); at the same time we know that there is no
+                // higher or equal priority frame that is currently pending. Therefore, priority inversion has just
+                // happend (sic!), because we can't enqueue the higher priority frame due to all TX mailboxes being busy.
+                // This scenario is extremely unlikely, because in order for it to happen, the application would need to
+                // transmit 4 (four) or more CAN frames with different CAN ID ordered from high ID to low ID nearly at
+                // the same time. For example:
+                //  1. 0x123        <-- Takes mailbox 0 (or any other)
+                //  2. 0x122        <-- Takes mailbox 2 (or any other)
+                //  3. 0x121        <-- Takes mailbox 1 (or any other)
+                //  4. 0x120        <-- INNER PRIORITY INVERSION HERE (only if all three TX mailboxes are still busy)
+                // This situation is even less likely to cause any noticeable disruptions on the CAN bus. Despite that,
+                // it is better to warn the developer about that during debugging, so we fire an assertion failure here.
+                // It is perfectly safe to remove it.
+                // Note: this error condition (all TX mailboxes busy) also occurs when erroneously sending data to the
+                // TX mailboxes of a non-existing CAN interface. Eg: accessing CAN2 on a device that only has CAN1.
+#if BXCAN_CONFIG_DEBUG_INNER_PRIORITY_INVERSION
+                BXCAN_ASSERT(!"CAN PRIO INV");  // NOLINT
+#endif
             }
         }
         else  // All TX mailboxes are free, use first
@@ -541,26 +605,13 @@ bool bxCANPush(const uint8_t     iface_index,      //
         BXCAN_ASSERT(tx_mailbox < 3U);  // Index check - the value must be correct here
     }
 
-    // If all TX mailboxes are busy (this is highly unlikely); at the same time we know that there is no
-    // higher or equal priority frame that is currently pending. Therefore, priority inversion has just
-    // happend (sic!), because we can't enqueue the higher priority frame due to all TX mailboxes being busy.
-    // This scenario is extremely unlikely, because in order for it to happen, the application would need to
-    // transmit 4 (four) or more CAN frames with different CAN ID ordered from high ID to low ID nearly at
-    // the same time. For example:
-    //  1. 0x123        <-- Takes mailbox 0 (or any other)
-    //  2. 0x122        <-- Takes mailbox 2 (or any other)
-    //  3. 0x121        <-- Takes mailbox 1 (or any other)
-    //  4. 0x120        <-- INNER PRIORITY INVERSION HERE (only if all three TX mailboxes are still busy)
-    // This situation is even less likely to cause any noticeable disruptions on the CAN bus. Despite that,
-    // it is better to warn the developer about that during debugging, so we fire an assertion failure here.
-    // It is perfectly safe to remove it.
-    // Note: this error condition (all TX mailboxes busy) also occurs when erroneously sending data to the
-    // TX mailboxes of a non-existing CAN interface. Eg: accessing CAN2 on a device that only has CAN1.
-
-    // By this time we've proved that a priority inversion would not occur, and we've also
-    // found a free TX mailbox (this is signalled by tx_mailbox != 0xFF). Therefore it is safe to enqueue
-    // the frame now.
-    if (input_ok && tx_mailbox < 3U)
+    // By this time we've proven that:
+    // - The input is valid.                                                        (input_ok    == true)
+    // - There are no mailboxes with priority >= the priority of the new frame.     (prio_higher == false)
+    // - A priority inversion would not occur.                                      (tx_mailbox  != 0xFF)
+    // - A free TX mailbox is available.                                            (tx_mailbox   < 3U)
+    // Therefore it is safe to enqueue the frame now.
+    if (input_ok && !prio_higher && (tx_mailbox < 3U))
     {
         volatile BxCANTxMailboxType* const mb = &bxcan_base->TxMailbox[tx_mailbox];
 
