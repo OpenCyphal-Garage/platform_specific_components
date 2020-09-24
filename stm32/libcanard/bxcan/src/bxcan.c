@@ -7,12 +7,16 @@
 #include <assert.h>
 #include <string.h>
 
-// System core clock frequency in Hz.
-#define BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK 80000000UL  // Processor core clock in Hz.
+// bxCAN driver user configuration.
+#define BXCAN_MAX_IFACE_INDEX 0U                            // Single CAN interface, thus maximum iface index = 0.
+#define BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK 80000000UL   // Processor core clock is 80.000.000 Hz.
+
 
 /// Configure the maximum interface index for the bxCAN hardware available in your MCU.
 /// Must be set to either 0 (only CAN1) or 1 (CAN1 and CAN2).
-#define BXCAN_MAX_IFACE_INDEX 1U
+#if !defined(BXCAN_MAX_IFACE_INDEX)
+#   error "Please set BXCAN_MAX_IFACE_INDEX to the maximum index of the available bxCAN hardware in your MCU."
+#endif
 
 /// Configure the system core clock frequency in Hz.
 /// Only used by the busy wait in waitMSRINAKBitStateChange().
