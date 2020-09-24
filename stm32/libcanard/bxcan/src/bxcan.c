@@ -111,14 +111,14 @@ static void processErrorStatus(volatile BxCANType* const bxcan_base,  //
 
     if (lec != 0U)
     {
-        bxcan_base->ESR = 0U;  // This action does only affect the LEC bits, other bits are read only!
+        bxcan_base->ESR &= ~BXCAN_ESR_LEC_MASK; // Clear all LEC bits.
 
-        *error_iface = true;  // Update the respective error flag for the selected interface.
+        *error_iface = true;                    // Update the respective error flag for the selected interface.
 
         // Abort pending transmissions only if we are in bus-off mode.
         if (bxcan_base->ESR & BXCAN_ESR_BOFF)
         {
-            bxcan_base->TSR = BXCAN_TSR_ABRQ0 | BXCAN_TSR_ABRQ1 | BXCAN_TSR_ABRQ2;
+            bxcan_base->TSR |= BXCAN_TSR_ABRQ0 | BXCAN_TSR_ABRQ1 | BXCAN_TSR_ABRQ2;
         }
     }
 }
@@ -176,66 +176,100 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
     // the initialization process.
     if (input_ok)
     {
-        bxcan_base->IER = 0U;                 // We need no interrupts
-        bxcan_base->MCR &= ~BXCAN_MCR_SLEEP;  // Exit sleep mode
-        bxcan_base->MCR |= BXCAN_MCR_INRQ;    // Request init
+        // Build an IER mask for all non-reserved bits.
+        const uint32_t ier_mask = BXCAN_IER_TMEIE  | BXCAN_IER_FMPIE0 | BXCAN_IER_FFIE0  | BXCAN_IER_FOVIE0 | //
+                                  BXCAN_IER_FMPIE1 | BXCAN_IER_FFIE1  | BXCAN_IER_FOVIE1 | BXCAN_IER_EWGIE  | //
+                                  BXCAN_IER_EPVIE  | BXCAN_IER_BOFIE  | BXCAN_IER_LECIE  | BXCAN_IER_ERRIE  | //
+                                  BXCAN_IER_WKUIE  | BXCAN_IER_SLKIE;
 
-        if (!waitMSRINAKBitStateChange(bxcan_base, true))  // Wait for synchronization
+        bxcan_base->IER &= ~ier_mask;                       // We need no interrupts.
+        bxcan_base->MCR &= ~BXCAN_MCR_SLEEP;                // Exit sleep mode.
+        bxcan_base->MCR |= BXCAN_MCR_INRQ;                  // Request init
+
+        if (!waitMSRINAKBitStateChange(bxcan_base, true))   // Wait for synchronization.
         {
-            bxcan_base->MCR = BXCAN_MCR_RESET;  // Reset the interface (bus-safe state), could not synchronize.
-            inak_ok         = false;            // INAK was not set.
+            bxcan_base->MCR |= BXCAN_MCR_RESET;             // Reset the interface, could not synchronize.
+            inak_ok          = false;                       // INAK was not set.
         }
     }
 
     if (input_ok && inak_ok)
     {
         // Hardware initialization (the hardware has already confirmed initialization mode, see above)
-        bxcan_base->MCR = BXCAN_MCR_ABOM | BXCAN_MCR_AWUM | BXCAN_MCR_INRQ;  // RM page 648
+        bxcan_base->MCR |= BXCAN_MCR_ABOM | BXCAN_MCR_AWUM | BXCAN_MCR_INRQ;  // RM page 648
 
-        bxcan_base->BTR = (((timings.max_resync_jump_width - 1U) & 3U) << 24U) |  //
-                          (((timings.bit_segment_1 - 1U) & 15U) << 16U) |         //
-                          (((timings.bit_segment_2 - 1U) & 7U) << 20U) |          //
-                          ((timings.bit_rate_prescaler - 1U) & 1023U) | (silent ? BXCAN_BTR_SILM : 0U);
+        // Build a BTR mask for all non-reserved bits.
+        const uint32_t btr_mask = BXCAN_BTR_BRP_MASK | BXCAN_BTR_TS1_MASK | BXCAN_BTR_TS2_MASK | //
+                                  BXCAN_BTR_SJW_MASK | BXCAN_BTR_LBKM     | BXCAN_BTR_SILM;
 
-        BXCAN_ASSERT(bxcan_base->IER == 0U);  // Making sure the interrupts are indeed disabled
+        bxcan_base->BTR = (bxcan_base->BTR & ~btr_mask) |                           //
+                          (((timings.max_resync_jump_width - 1U) & 3U) << 24U) |    //
+                          (((timings.bit_segment_1 - 1U) & 15U) << 16U) |           //
+                          (((timings.bit_segment_2 - 1U) & 7U) << 20U) |            //
+                          ((timings.bit_rate_prescaler - 1U) & 1023U) |             //
+                          (silent ? BXCAN_BTR_SILM : 0U);
 
-        bxcan_base->MCR &= ~BXCAN_MCR_INRQ;  // Leave init mode
+        BXCAN_ASSERT(bxcan_base->IER == 0U);        // Make sure the interrupts are indeed disabled.
+
+        bxcan_base->MCR &= ~BXCAN_MCR_INRQ;         // Leave init mode.
 
         if (!waitMSRINAKBitStateChange(bxcan_base, false))
         {
-            bxcan_base->MCR = BXCAN_MCR_RESET;  // Reset the interface (bus-safe state), could not synchronize.
-            inak_ok         = false;            // INAK was not cleared.
+            bxcan_base->MCR |= BXCAN_MCR_RESET;     // Reset the interface, could not synchronize.
+            inak_ok          = false;               // INAK was not cleared.
         }
     }
 
     if (input_ok && inak_ok)
     {
-        // Default filter configuration. Note that ALL filters are available ONLY via CAN1!
-        // CAN2 filters are offset by 14.
-        // We use 14 filters at most always which simplifies the code and ensures compatibility with all
-        // MCU that use bxCAN.
-        // Note: block statement is introduced to contain the scope of fmr (defensive programming).
-        {
-            uint32_t fmr = BXCAN1->FMR & 0xFFFFC0F1U;
-            fmr |= BXCAN_NUM_ACCEPTANCE_FILTERS << 8U;  // CAN2 start bank = 14 (if CAN2 is present)
-            BXCAN1->FMR = fmr | BXCAN_FMR_FINIT;
-        }
-
-        BXCAN_ASSERT(((BXCAN1->FMR >> 8U) & 0x3FU) == BXCAN_NUM_ACCEPTANCE_FILTERS);
-
-        BXCAN1->FM1R = 0U;          // Identifier Mask mode
-        BXCAN1->FS1R = 0x0FFFFFFF;  // All 32-bit
-
-        // Filters are alternating between FIFO0 and FIFO1 in order to equalize the load.
+        // Default filter configuration.
+        // For MCUs with two bxCAN interfaces the configuration includes setting the filter start banks in FMR.
+        // Note that ALL filters are available ONLY via CAN1! CAN2 filters are offset by 14. We use 14 filters
+        // at most always, which simplifies the code and ensures compatibility with all MCU that use bxCAN.
+        // For MCUs with one bxCAN interface, there are only 14 filter banks.
+        //
+        // Filters are alternating between FIFO0 and FIFO1 in order to equalize the load. (Set in FFA1R.)
         // This will cause occasional priority inversion and frame reordering on reception,
         // but that is acceptable for UAVCAN, and a majority of other protocols will tolerate
         // this too, since there will be no reordering within the same CAN ID.
-        BXCAN1->FFA1R                            = 0x0AAAAAAA;
-        BXCAN1->FilterRegister[filter_index].FR1 = 0U;
-        BXCAN1->FilterRegister[filter_index].FR2 = 0U;
-        BXCAN1->FA1R                             = (1U << filter_index);  // One filter enabled
+        if (BXCAN_MAX_IFACE_INDEX > 0)
+        {
+            // MCU with two bxCAN interfaces: configure the filter start banks for each interface.
+            // Example MCU: STM32F446.
+            // Note: block statement is introduced to contain the scope of fmr (defensive programming).
+            {
+                uint32_t fmr = BXCAN1->FMR & 0xFFFFC0FEU;
+                fmr |= BXCAN_NUM_ACCEPTANCE_FILTERS << 8U;  // CAN2 start bank = 14 (if CAN2 is present)
+                BXCAN1->FMR = fmr | BXCAN_FMR_FINIT;        // Set the configuration, enter filter initialization mode.
+            }
 
-        bxcan_base->FMR &= ~BXCAN_FMR_FINIT;  // Leave initialization mode.
+            BXCAN_ASSERT(((BXCAN1->FMR >> 8U) & 0x3FU) == BXCAN_NUM_ACCEPTANCE_FILTERS);
+
+            BXCAN1->FM1R &= 0xF0000000U;                // Identifier Mask mode. (4 MSB are reserved.)
+            BXCAN1->FS1R |= 0x0FFFFFFFU;                // All 32-bit filters. (4 MSB are reserved.)
+
+            BXCAN1->FFA1R = (BXCAN1->FFA1R & 0xF0000000U) | 0x0AAAAAAAU; // Alternate the filters between FIFO0 & FIFO1.
+
+
+        }
+        else
+        {
+            // MCU with single bxCAN interface has no filter start bank configuration in FMR.
+            // Example MCU: STM32L431.
+            BXCAN1->FMR |= BXCAN_FMR_FINIT;             // Enter filter initialization mode.
+
+            BXCAN1->FM1R &= 0xFFFFC000U;                // Identifier Mask mode. (18 MSB are reserved.)
+            BXCAN1->FS1R |= 0x00003FFFU;                // All 32-bit filters. (18 MSB are reserved.)
+
+            BXCAN1->FFA1R = (BXCAN1->FFA1R & 0xFFFFC000U) | 0x00002AAAU; // Alternate the filters between FIFO0 & FIFO1.
+        }
+
+        // Configure one "accept all" filter and enable it.
+        BXCAN1->FilterRegister[filter_index].FR1 = 0U;  // Accept all.
+        BXCAN1->FilterRegister[filter_index].FR2 = 0U;  // Accept all.
+        BXCAN1->FA1R |= (1U << filter_index);           // One filter enabled
+
+        bxcan_base->FMR &= ~BXCAN_FMR_FINIT;            // Leave initialization mode.
         out_status = true;
     }
 
@@ -267,8 +301,16 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
     if (filter_index_offset != 0xFF)
     {
         // First we disable all filters. This may cause momentary RX frame losses, but the application
-        // should be able to tolerate that.
-        BXCAN1->FA1R = 0U;
+        // should be able to tolerate that. The number of reserved bits is different for devices with
+        // one or two bxCAN interfaces.
+        if (BXCAN_MAX_IFACE_INDEX > 0)
+        {
+            BXCAN1->FA1R &= 0xF0000000U;    // Dual CAN: 28 filter banks, 4 MSB reserved.
+        }
+        else
+        {
+            BXCAN1->FA1R &= 0xFFFFC000U;    // Single CAN: 14 filter banks, 18 MSB reserved.
+        }
 
         // Having filters disabled we can update the configuration.
         // Register mapping: FR1 - ID, FR2 - Mask
@@ -450,15 +492,15 @@ bool bxCANPush(const uint8_t     iface_index,      //
                         // Abort the selected mailbox.
                         if (i == 0U)
                         {
-                            bxcan_base->TSR = BXCAN_TSR_ABRQ0;
+                            bxcan_base->TSR |= BXCAN_TSR_ABRQ0;
                         }
                         if (i == 1U)
                         {
-                            bxcan_base->TSR = BXCAN_TSR_ABRQ1;
+                            bxcan_base->TSR |= BXCAN_TSR_ABRQ1;
                         }
                         if (i == 2U)
                         {
-                            bxcan_base->TSR = BXCAN_TSR_ABRQ2;
+                            bxcan_base->TSR |= BXCAN_TSR_ABRQ2;
                         }
 
                         *error_iface = true;  // TX timeout error occurred.
@@ -533,14 +575,8 @@ bool bxCANPush(const uint8_t     iface_index,      //
             (void) memcpy(&scratch_data[0], payload, payload_size);  // NOLINT
         }
 
-        // TDTR contains the DLC bits. However, there are reserved bits in the register that should not be changed.
-        // Selectively clear and set the DLC bits only. DLC equals data length except in CAN FD.
-        uint32_t tdtr = mb->TDTR;
-        tdtr &= ~((uint32_t) BXCAN_TDTR_DLC_MASK);
-        tdtr |= (payload_size << BXCAN_TDTR_DLC_SHIFT) & (uint32_t) BXCAN_TDTR_DLC_MASK;
-        // TODO: the nicer way above seems to fail at the AND operation???
-
-        mb->TDTR = tdtr;
+        // TDTR contains the DLC bits. DLC equals data length except in CAN FD.
+        mb->TDTR = (mb->TDTR & ~BXCAN_TDTR_DLC_MASK) | payload_size;
 
         mb->TDHR = (((uint32_t) scratch_data[7]) << 24U) | (((uint32_t) scratch_data[6]) << 16U) |  //
                    (((uint32_t) scratch_data[5]) << 8U) | (((uint32_t) scratch_data[4]) << 0U);
@@ -628,7 +664,7 @@ bool bxCANPop(const uint8_t   iface_index,          //
                 *out_ptr++       = (uint8_t)(0xFFU & (rdhr >> 24U));
 
                 // Release FIFO entry we just read
-                *RFxR[i] = BXCAN_RFR_RFOM | BXCAN_RFR_FOVR | BXCAN_RFR_FULL;
+                *RFxR[i] |= BXCAN_RFR_RFOM | BXCAN_RFR_FOVR | BXCAN_RFR_FULL;
 
                 // Only accept the frame if it was a CAN2.0b extended-ID data frame. Standard
                 // frames (IDE = 0) (which includes error and overload frames) and remote frames
