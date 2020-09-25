@@ -7,15 +7,10 @@
 #include <assert.h>
 #include <string.h>
 
-// bxCAN driver user configuration.
-#define BXCAN_MAX_IFACE_INDEX 0U                            // Single CAN interface, thus maximum iface index = 0.
-#define BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK 80000000UL   // Processor core clock is 80.000.000 Hz.
-
-
 /// Configure the maximum interface index for the bxCAN hardware available in your MCU.
 /// Must be set to either 0 (only CAN1) or 1 (CAN1 and CAN2).
 #if !defined(BXCAN_MAX_IFACE_INDEX)
-#   error "Please set BXCAN_MAX_IFACE_INDEX to the maximum index of the available bxCAN hardware in your MCU."
+#    error "Please set BXCAN_MAX_IFACE_INDEX to the maximum index of the available bxCAN hardware in your MCU."
 #endif
 
 /// Configure the system core clock frequency in Hz.
@@ -69,6 +64,7 @@ static uint32_t convertRegisterToFrameID(const uint32_t id)
     return out;
 }
 
+/// Wait for the state change of the MSR INAK bit, with time-out.
 static bool waitMSRINAKBitStateChange(volatile const BxCANType* const bxcan_base,  //
                                       const bool                      target_state)
 {
@@ -105,20 +101,21 @@ static bool waitMSRINAKBitStateChange(volatile const BxCANType* const bxcan_base
     return out_status;
 }
 
-// Detect TX mailbox slot that have expired and abort them.
+/// Detect TX mailbox slots that have expired and abort them.
 static void abortExpiredTxMailboxes(volatile BxCANType* const bxcan_base,   //
                                     bool* const               error_iface,  //
                                     const uint64_t            current_time)
 {
-    BXCAN_ASSERT((bxcan_base == BXCAN1) || (bxcan_base == BXCAN2));
-    BXCAN_ASSERT((error_iface == &g_error[0]) || (error_iface == &g_error[1]));
+    BXCAN_ASSERT((bxcan_base == BXCAN1) || (bxcan_base == BXCAN2));              // Valid bxcan base address.
+    BXCAN_ASSERT(!((bxcan_base == BXCAN2) && (BXCAN_MAX_IFACE_INDEX == 0)));     // Stay in bounds g_tx_deadline[].
+    BXCAN_ASSERT((error_iface == &g_error[0]) || (error_iface == &g_error[1]));  // Valid g_error address.
 
     // Obtain the busy state of all mailboxes.
     const bool tme[3U] = {(bxcan_base->TSR & BXCAN_TSR_TME0) != 0U,
                           (bxcan_base->TSR & BXCAN_TSR_TME1) != 0U,
                           (bxcan_base->TSR & BXCAN_TSR_TME2) != 0U};
 
-    // Calculate the offset in the deadline table. Either 0 or 3.
+    // Calculate the offset in the deadline table. Three mailboxes per interface, thus offset = 0 or 3.
     const uint8_t iface_index_offset = (bxcan_base == BXCAN1) ? 0 : 3;
 
     // Check the deadline for each active mailbox.
@@ -156,40 +153,33 @@ static void abortExpiredTxMailboxes(volatile BxCANType* const bxcan_base,   //
     }
 }
 
+/// Handle TX/RX errors. Also abort pending TX buffers while in bus-off mode. Errors are reported.
 static void processErrorStatus(volatile BxCANType* const bxcan_base,  //
                                bool* const               error_iface)
 {
-    BXCAN_ASSERT((bxcan_base == BXCAN1) || (bxcan_base == BXCAN2));
-    BXCAN_ASSERT((error_iface == &g_error[0]) || (error_iface == &g_error[1]));
+    BXCAN_ASSERT((bxcan_base == BXCAN1) || (bxcan_base == BXCAN2));              // Valid bxcan base address.
+    BXCAN_ASSERT(!((bxcan_base == BXCAN2) && (BXCAN_MAX_IFACE_INDEX == 0)));     // Stay in bounds g_tx_deadline[].
+    BXCAN_ASSERT((error_iface == &g_error[0]) || (error_iface == &g_error[1]));  // Valid g_error address.
 
-    // Aborting TX transmissions while in bus-off mode.
-    // Updating error flag
+    // Updating error flag.
     const uint8_t lec = (uint8_t)((bxcan_base->ESR & BXCAN_ESR_LEC_MASK) >> BXCAN_ESR_LEC_SHIFT);
 
     if (lec != 0U)
     {
-        bxcan_base->ESR &= ~BXCAN_ESR_LEC_MASK; // Clear all LEC bits.
+        bxcan_base->ESR &= ~BXCAN_ESR_LEC_MASK;  // Clear all LEC bits.
 
-        *error_iface = true;                    // Update the respective error flag for the selected interface.
+        *error_iface = true;  // Update the respective error flag for the selected interface.
 
-        // Abort pending transmissions only if we are in bus-off mode. Also reset the TX mailbox timeouts
-        // for the selected interface.
+        // Abort pending transmissions only if we are in bus-off mode.
+        // Also reset the TX mailbox timeouts for the selected interface.
         if (bxcan_base->ESR & BXCAN_ESR_BOFF)
         {
             bxcan_base->TSR |= BXCAN_TSR_ABRQ0 | BXCAN_TSR_ABRQ1 | BXCAN_TSR_ABRQ2;
 
-            if (bxcan_base == BXCAN1)
-            {
-                g_tx_deadline[0] = UINT64_MAX;
-                g_tx_deadline[1] = UINT64_MAX;
-                g_tx_deadline[2] = UINT64_MAX;
-            }
-            else
-            {
-                g_tx_deadline[3] = UINT64_MAX;
-                g_tx_deadline[4] = UINT64_MAX;
-                g_tx_deadline[5] = UINT64_MAX;
-            }
+            const uint8_t iface_index_offset      = (bxcan_base == BXCAN1) ? 0 : 3;
+            g_tx_deadline[iface_index_offset]     = UINT64_MAX;
+            g_tx_deadline[iface_index_offset + 1] = UINT64_MAX;
+            g_tx_deadline[iface_index_offset + 2] = UINT64_MAX;
         }
     }
 }
@@ -248,19 +238,19 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
     if (input_ok)
     {
         // Build an IER mask for all non-reserved bits.
-        const uint32_t ier_mask = BXCAN_IER_TMEIE  | BXCAN_IER_FMPIE0 | BXCAN_IER_FFIE0  | BXCAN_IER_FOVIE0 | //
-                                  BXCAN_IER_FMPIE1 | BXCAN_IER_FFIE1  | BXCAN_IER_FOVIE1 | BXCAN_IER_EWGIE  | //
-                                  BXCAN_IER_EPVIE  | BXCAN_IER_BOFIE  | BXCAN_IER_LECIE  | BXCAN_IER_ERRIE  | //
-                                  BXCAN_IER_WKUIE  | BXCAN_IER_SLKIE;
+        const uint32_t ier_mask = BXCAN_IER_TMEIE | BXCAN_IER_FMPIE0 | BXCAN_IER_FFIE0 | BXCAN_IER_FOVIE0 |  //
+                                  BXCAN_IER_FMPIE1 | BXCAN_IER_FFIE1 | BXCAN_IER_FOVIE1 | BXCAN_IER_EWGIE |  //
+                                  BXCAN_IER_EPVIE | BXCAN_IER_BOFIE | BXCAN_IER_LECIE | BXCAN_IER_ERRIE |    //
+                                  BXCAN_IER_WKUIE | BXCAN_IER_SLKIE;
 
-        bxcan_base->IER &= ~ier_mask;                       // We need no interrupts.
-        bxcan_base->MCR &= ~BXCAN_MCR_SLEEP;                // Exit sleep mode.
-        bxcan_base->MCR |= BXCAN_MCR_INRQ;                  // Request init
+        bxcan_base->IER &= ~ier_mask;         // We need no interrupts.
+        bxcan_base->MCR &= ~BXCAN_MCR_SLEEP;  // Exit sleep mode.
+        bxcan_base->MCR |= BXCAN_MCR_INRQ;    // Request init
 
-        if (!waitMSRINAKBitStateChange(bxcan_base, true))   // Wait for synchronization.
+        if (!waitMSRINAKBitStateChange(bxcan_base, true))  // Wait for synchronization.
         {
-            bxcan_base->MCR |= BXCAN_MCR_RESET;             // Reset the interface, could not synchronize.
-            inak_ok          = false;                       // INAK was not set.
+            bxcan_base->MCR |= BXCAN_MCR_RESET;  // Reset the interface, could not synchronize.
+            inak_ok = false;                     // INAK was not set.
         }
     }
 
@@ -270,24 +260,24 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
         bxcan_base->MCR |= BXCAN_MCR_ABOM | BXCAN_MCR_AWUM | BXCAN_MCR_INRQ;  // RM page 648
 
         // Build a BTR mask for all non-reserved bits.
-        const uint32_t btr_mask = BXCAN_BTR_BRP_MASK | BXCAN_BTR_TS1_MASK | BXCAN_BTR_TS2_MASK | //
-                                  BXCAN_BTR_SJW_MASK | BXCAN_BTR_LBKM     | BXCAN_BTR_SILM;
+        const uint32_t btr_mask = BXCAN_BTR_BRP_MASK | BXCAN_BTR_TS1_MASK | BXCAN_BTR_TS2_MASK |  //
+                                  BXCAN_BTR_SJW_MASK | BXCAN_BTR_LBKM | BXCAN_BTR_SILM;
 
-        bxcan_base->BTR = (bxcan_base->BTR & ~btr_mask) |                           //
-                          (((timings.max_resync_jump_width - 1U) & 3U) << 24U) |    //
-                          (((timings.bit_segment_1 - 1U) & 15U) << 16U) |           //
-                          (((timings.bit_segment_2 - 1U) & 7U) << 20U) |            //
-                          ((timings.bit_rate_prescaler - 1U) & 1023U) |             //
+        bxcan_base->BTR = (bxcan_base->BTR & ~btr_mask) |                         //
+                          (((timings.max_resync_jump_width - 1U) & 3U) << 24U) |  //
+                          (((timings.bit_segment_1 - 1U) & 15U) << 16U) |         //
+                          (((timings.bit_segment_2 - 1U) & 7U) << 20U) |          //
+                          ((timings.bit_rate_prescaler - 1U) & 1023U) |           //
                           (silent ? BXCAN_BTR_SILM : 0U);
 
-        BXCAN_ASSERT(bxcan_base->IER == 0U);        // Make sure the interrupts are indeed disabled.
+        BXCAN_ASSERT(bxcan_base->IER == 0U);  // Make sure the interrupts are indeed disabled.
 
-        bxcan_base->MCR &= ~BXCAN_MCR_INRQ;         // Leave init mode.
+        bxcan_base->MCR &= ~BXCAN_MCR_INRQ;  // Leave init mode.
 
         if (!waitMSRINAKBitStateChange(bxcan_base, false))
         {
-            bxcan_base->MCR |= BXCAN_MCR_RESET;     // Reset the interface, could not synchronize.
-            inak_ok          = false;               // INAK was not cleared.
+            bxcan_base->MCR |= BXCAN_MCR_RESET;  // Reset the interface, could not synchronize.
+            inak_ok = false;                     // INAK was not cleared.
         }
     }
 
@@ -316,23 +306,23 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
 
             BXCAN_ASSERT(((BXCAN1->FMR >> 8U) & 0x3FU) == BXCAN_NUM_ACCEPTANCE_FILTERS);
 
-            BXCAN1->FM1R &= 0xF0000000U;                // Identifier Mask mode. (4 MSB are reserved.)
-            BXCAN1->FS1R |= 0x0FFFFFFFU;                // All 32-bit filters. (4 MSB are reserved.)
+            BXCAN1->FM1R &= 0xF0000000U;  // Identifier Mask mode. (4 MSB are reserved.)
+            BXCAN1->FS1R |= 0x0FFFFFFFU;  // All 32-bit filters. (4 MSB are reserved.)
 
-            BXCAN1->FFA1R = (BXCAN1->FFA1R & 0xF0000000U) | 0x0AAAAAAAU; // Alternate the filters between FIFO0 & FIFO1.
-
-
+            BXCAN1->FFA1R =
+                (BXCAN1->FFA1R & 0xF0000000U) | 0x0AAAAAAAU;  // Alternate the filters between FIFO0 & FIFO1.
         }
         else
         {
             // MCU with single bxCAN interface has no filter start bank configuration in FMR.
             // Example MCU: STM32L431.
-            BXCAN1->FMR |= BXCAN_FMR_FINIT;             // Enter filter initialization mode.
+            BXCAN1->FMR |= BXCAN_FMR_FINIT;  // Enter filter initialization mode.
 
-            BXCAN1->FM1R &= 0xFFFFC000U;                // Identifier Mask mode. (18 MSB are reserved.)
-            BXCAN1->FS1R |= 0x00003FFFU;                // All 32-bit filters. (18 MSB are reserved.)
+            BXCAN1->FM1R &= 0xFFFFC000U;  // Identifier Mask mode. (18 MSB are reserved.)
+            BXCAN1->FS1R |= 0x00003FFFU;  // All 32-bit filters. (18 MSB are reserved.)
 
-            BXCAN1->FFA1R = (BXCAN1->FFA1R & 0xFFFFC000U) | 0x00002AAAU; // Alternate the filters between FIFO0 & FIFO1.
+            BXCAN1->FFA1R =
+                (BXCAN1->FFA1R & 0xFFFFC000U) | 0x00002AAAU;  // Alternate the filters between FIFO0 & FIFO1.
         }
 
         // Configure one "accept all" filter and enable it.
@@ -340,7 +330,7 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
         BXCAN1->FilterRegister[filter_index].FR2 = 0U;  // Accept all.
         BXCAN1->FA1R |= (1U << filter_index);           // One filter enabled
 
-        bxcan_base->FMR &= ~BXCAN_FMR_FINIT;            // Leave initialization mode.
+        bxcan_base->FMR &= ~BXCAN_FMR_FINIT;  // Leave initialization mode.
         out_status = true;
     }
 
@@ -376,11 +366,11 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
         // one or two bxCAN interfaces.
         if (BXCAN_MAX_IFACE_INDEX > 0)
         {
-            BXCAN1->FA1R &= 0xF0000000U;    // Dual CAN: 28 filter banks, 4 MSB reserved.
+            BXCAN1->FA1R &= 0xF0000000U;  // Dual CAN: 28 filter banks, 4 MSB reserved.
         }
         else
         {
-            BXCAN1->FA1R &= 0xFFFFC000U;    // Single CAN: 14 filter banks, 18 MSB reserved.
+            BXCAN1->FA1R &= 0xFFFFC000U;  // Single CAN: 14 filter banks, 18 MSB reserved.
         }
 
         // Having filters disabled we can update the configuration.
@@ -538,8 +528,8 @@ bool bxCANPush(const uint8_t     iface_index,      //
 
     // Seeking an empty slot, checking if priority inversion would occur if we enqueued now.
     // We can always enqueue safely if all TX mailboxes are free and no transmissions are pending.
-    uint8_t tx_mailbox = 0xFF;  // 0xFF indicates no free mailboxes.
-    bool prio_higher = false;   // false indicates no frame with higher priority.
+    uint8_t tx_mailbox  = 0xFF;   // 0xFF indicates no free mailboxes.
+    bool    prio_higher = false;  // false indicates no frame with higher priority.
     if (input_ok)
     {
         static const uint32_t AllTME = BXCAN_TSR_TME0 | BXCAN_TSR_TME1 | BXCAN_TSR_TME2;
@@ -579,10 +569,10 @@ bool bxCANPush(const uint8_t     iface_index,      //
             {
                 // All TX mailboxes are busy (this is highly unlikely); at the same time we know that there is no
                 // higher or equal priority frame that is currently pending. Therefore, priority inversion has just
-                // happend (sic!), because we can't enqueue the higher priority frame due to all TX mailboxes being busy.
-                // This scenario is extremely unlikely, because in order for it to happen, the application would need to
-                // transmit 4 (four) or more CAN frames with different CAN ID ordered from high ID to low ID nearly at
-                // the same time. For example:
+                // happend (sic!), because we can't enqueue the higher priority frame due to all TX mailboxes being
+                // busy. This scenario is extremely unlikely, because in order for it to happen, the application would
+                // need to transmit 4 (four) or more CAN frames with different CAN ID ordered from high ID to low ID
+                // nearly at the same time. For example:
                 //  1. 0x123        <-- Takes mailbox 0 (or any other)
                 //  2. 0x122        <-- Takes mailbox 2 (or any other)
                 //  3. 0x121        <-- Takes mailbox 1 (or any other)
