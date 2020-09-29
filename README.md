@@ -1,5 +1,6 @@
 # Platform-specific components
 
+[![Build Status](https://travis-ci.org/UAVCAN/platform_specific_components.svg?branch=master)](https://travis-ci.org/UAVCAN/platform_specific_components)
 [![Forum](https://img.shields.io/discourse/users.svg?server=https%3A%2F%2Fforum.uavcan.org&color=1700b3)](https://forum.uavcan.org)
 
 This repository contains various platform-specific components maintained by the UAVCAN Development Team.
