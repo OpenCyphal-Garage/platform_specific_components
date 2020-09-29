@@ -40,7 +40,10 @@
 static bool g_error[2] = {false};
 
 /// Time stamps for TX time-out management. There are three TX mailboxes for each CAN interface.
-/// An UINT64_MAX value means the time stamp is not set (mailbox is not in use).
+/// An UINT64_MAX value means the time stamp is not set (mailbox is not in use). Zero initialization
+/// will work, as the value will be re-set to UINT64_MAX in abortExpiredTxMailboxes() and set to the
+/// required value in bxCANPush(). This way, any inadvertently busy mailboxes will still be aborted
+/// automatically, making this more robust than initializing to UINT64_MAX from the onset.
 static uint64_t g_tx_deadline[(1 + BXCAN_MAX_IFACE_INDEX) * 3] = {0};
 
 /// Converts an extended-ID frame format into the bxCAN TX ID register format.
@@ -237,14 +240,6 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
     // the initialization process.
     if (input_ok)
     {
-        // TX mailbox time-stamps initialization.
-        // All mailboxes are explicitly set to free (time-stamp not set).
-        const uint8_t number_mailboxes = (iface_index == 0) ? 3 : 6;  // 3 or 6 mailboxes.
-        for (uint8_t i = 0; i < number_mailboxes; i++)
-        {
-            g_tx_deadline[i] = UINT64_MAX;
-        }
-
         // Build an IER mask for all non-reserved bits.
         const uint32_t ier_mask = BXCAN_IER_TMEIE | BXCAN_IER_FMPIE0 | BXCAN_IER_FFIE0 | BXCAN_IER_FOVIE0 |  //
                                   BXCAN_IER_FMPIE1 | BXCAN_IER_FFIE1 | BXCAN_IER_FOVIE1 | BXCAN_IER_EWGIE |  //
