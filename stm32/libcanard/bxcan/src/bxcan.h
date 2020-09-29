@@ -51,14 +51,13 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /// This is defined by the bxCAN hardware.
 /// Devices with only one CAN interface have 14 filters (e.g. F103).
 /// Devices with two CAN interfaces (e.g. F105, F446) have 28 filters, which are shared equally.
-#define BXCAN_NUM_ACCEPTANCE_FILTERS             14U
+#define BXCAN_NUM_ACCEPTANCE_FILTERS 14U
 
 /// A CAN acceptance filter configuration. Usable only with extended CAN 2.0B data frames.
 /// It is not possible to configure acceptance of standard-ID or RTR frames.
@@ -73,10 +72,10 @@ typedef struct
 /// Some applications may prefer to store pre-computed parameters instead of calculating them at runtime.
 typedef struct
 {
-    uint16_t bit_rate_prescaler;        /// [1, 1024]
-    uint8_t  bit_segment_1;             /// [1, 16]
-    uint8_t  bit_segment_2;             /// [1, 8]
-    uint8_t  max_resync_jump_width;     /// [1, 4] (recommended value is 1)
+    uint16_t bit_rate_prescaler;     /// [1, 1024]
+    uint8_t  bit_segment_1;          /// [1, 16]
+    uint8_t  bit_segment_2;          /// [1, 8]
+    uint8_t  max_resync_jump_width;  /// [1, 4] (recommended value is 1)
 } BxCANTimings;
 
 /// Initialization can be performed multiple times to switch between operating modes and/or bit rates.
@@ -93,9 +92,7 @@ typedef struct
 /// WARNING: The driver is not thread-safe!
 ///          It does not use IRQ or critical sections though, so it is safe to invoke its API functions from the
 ///          IRQ context from the application.
-bool bxCANConfigure(const uint8_t      iface_index,
-                    const BxCANTimings timings,
-                    const bool         silent);
+bool bxCANConfigure(const uint8_t iface_index, const BxCANTimings timings, const bool silent);
 
 /// Acceptance filter configuration. Unused filters shall be set to {0, 0} (all bits zero); they will reject all frames.
 /// When the interface is reinitialized, hardware acceptance filters are reset, so this function shall be re-invoked.
@@ -103,8 +100,7 @@ bool bxCANConfigure(const uint8_t      iface_index,
 /// Filters alternate between FIFO0/1 in order to equalize the load: even filters take FIFO0, odd filters take FIFO1.
 /// This will cause occasional priority inversion and frame reordering on reception, but that is acceptable for UAVCAN,
 /// and most other CAN-based protocols will tolerate this too since there will be no reordering within the same CAN ID.
-void bxCANConfigureFilters(const uint8_t           iface_index,
-                           const BxCANFilterParams params[BXCAN_NUM_ACCEPTANCE_FILTERS]);
+void bxCANConfigureFilters(const uint8_t iface_index, const BxCANFilterParams params[BXCAN_NUM_ACCEPTANCE_FILTERS]);
 
 /// This function is intended for error statistics tracking. The read is destructive.
 /// Returns true if at least one of the following events took place since the previous invocation:
@@ -179,4 +175,4 @@ bool bxCANComputeTimings(const uint32_t      peripheral_clock_rate,
 
 #ifdef __cplusplus
 }
-#endif 
+#endif
