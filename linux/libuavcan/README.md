@@ -16,6 +16,9 @@ Note that the driver will be able to synchronize the system clock with the netwo
 node application is running with root privileges.
 Please read the class documentation at `include/uavcan_linux/clock.hpp` for details.
 
+The [libuavcan_posix](https://github.com/UAVCAN/libuavcan/tree/a38f193511ad24fa2f05f3ccd5988e3d70ad1a59/libuavcan_drivers/posix)
+driver may come useful in most applications as well.
+
 ## Installation
 
 This part describes how to install libuavcan - including the Linux driver - on a Linux machine.
