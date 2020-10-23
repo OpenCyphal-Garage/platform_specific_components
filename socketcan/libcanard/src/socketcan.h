@@ -36,6 +36,13 @@ typedef int SocketCANFD;
 /// On failure, a negated errno is returned.
 /// To discard the socket just call close() on it; no additional de-initialization activities are required.
 /// The argument can_fd enables support for CAN FD frames.
+///
+/// If you need the outgoing frames to be looped back, set option CAN_RAW_RECV_OWN_MSGS on the returned socket handle:
+///   const int on = 1;
+///   int err = setsockopt(s, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS, &on, sizeof(on));
+/// It is currently not possible to distinguish loopback frames from true RX frames. If you need that,
+/// consider using recvmsg(..) instead of this wrapper as shown in the following example:
+/// https://github.com/UAVCAN/platform_specific_components/blob/4745ef59f57b7e1c34705b127ea8c7a35e3874c1/linux/libuavcan/include/uavcan_linux/socketcan.hpp#L210-L270
 SocketCANFD socketcanOpen(const char* const iface_name, const bool can_fd);
 
 /// Enqueue a new extended CAN data frame for transmission.
