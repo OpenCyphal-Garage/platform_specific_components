@@ -36,13 +36,6 @@ typedef int SocketCANFD;
 /// On failure, a negated errno is returned.
 /// To discard the socket just call close() on it; no additional de-initialization activities are required.
 /// The argument can_fd enables support for CAN FD frames.
-///
-/// If you need the outgoing frames to be looped back, set option CAN_RAW_RECV_OWN_MSGS on the returned socket handle:
-///   const int on = 1;
-///   int err = setsockopt(s, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS, &on, sizeof(on));
-/// It is currently not possible to distinguish loopback frames from true RX frames. If you need that,
-/// consider using recvmsg(..) instead of this wrapper as shown in the following example:
-/// https://github.com/UAVCAN/platform_specific_components/blob/4745ef59f57b7e1c34705b127ea8c7a35e3874c1/linux/libuavcan/include/uavcan_linux/socketcan.hpp#L210-L270
 SocketCANFD socketcanOpen(const char* const iface_name, const bool can_fd);
 
 /// Enqueue a new extended CAN data frame for transmission.
@@ -55,7 +48,7 @@ int16_t socketcanPush(const SocketCANFD fd, const CanardFrame* const frame, cons
 /// If the received frame is not an extended-ID data frame, it will be dropped and the function will return early.
 /// The payload pointer of the returned frame will point to the payload_buffer. It can be a stack-allocated array.
 /// The payload_buffer_size shall be large enough (64 bytes is enough for CAN FD), otherwise an error is returned.
-/// The timestamp of the received frame will be set to the CLOCK_TAI sampled near the moment of its arrival.
+/// The timestamp of the received frame will be set to the kernel CLOCK_TAI sampled near the moment of its arrival.
 /// The loopback flag pointer is used to both indicate and control behavior when a looped-back message is received.
 /// If the flag pointer is NULL, loopback frames are silently dropped; if not NULL, they are accepted and indicated
 /// using this flag.
