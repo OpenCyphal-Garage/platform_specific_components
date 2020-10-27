@@ -266,7 +266,7 @@ int16_t socketcanPop(const SocketCANFD       fd,
         {
             assert(0);
             free(control);
-            return -1;
+            return -EIO;
         }
 
         (void) memset(out_frame, 0, sizeof(CanardFrame));
