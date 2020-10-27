@@ -239,7 +239,7 @@ int16_t socketcanPop(const SocketCANFD       fd,
             return 0;  // Not an extended data frame -- drop silently and return early.
         }
 
-        const bool loopback_frame = (msg.msg_flags & (int) MSG_CONFIRM) != 0;  // NOLINT
+        const bool loopback_frame = ((uint32_t) msg.msg_flags & (uint32_t) MSG_CONFIRM) != 0;  // NOLINT
         if (loopback == NULL && loopback_frame)
         {
             free(control);
