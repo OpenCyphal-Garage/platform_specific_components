@@ -179,7 +179,7 @@ int16_t socketcanPop(const SocketCANFD       fd,
     const int16_t poll_result = doPoll(fd, POLLIN, timeout_usec);
     if (poll_result > 0)
     {
-        // Initialize the message header scatter/gather array.
+        // Initialize the message header scatter/gather array. It is to hold a single CAN FD frame struct.
         // We use the CAN FD struct regardless of whether the CAN FD socket option is set.
         // Per the user manual, this is acceptable because they are binary compatible.
         struct canfd_frame sockcan_frame = {0};  // CAN FD frame storage.
@@ -191,7 +191,7 @@ int16_t socketcanPop(const SocketCANFD       fd,
         };
 
         // Determine the size of the ancillary data and zero-initialize the buffer for it.
-        // We require space for both the receive message header and the time stamp.
+        // We require space for both the receive message header (implied in CMSG_SPACE) and the time stamp.
         // The ancillary data buffer is wrapped in a union to ensure it is suitably aligned.
         // See the cmsg(3) man page (release 5.08 dated 2020-06-09, or later) for details.
         union
@@ -259,7 +259,7 @@ int16_t socketcanPop(const SocketCANFD       fd,
         }
 
         (void) memset(out_frame, 0, sizeof(CanardFrame));
-        out_frame->timestamp_usec  = (CanardMicrosecond)(((uint64_t) tv.tv_sec * MEGA) + tv.tv_usec);
+        out_frame->timestamp_usec  = (CanardMicrosecond)(((uint64_t) tv.tv_sec * MEGA) + (uint64_t) tv.tv_usec);
         out_frame->extended_can_id = sockcan_frame.can_id & CAN_EFF_MASK;
         out_frame->payload_size    = sockcan_frame.len;
         out_frame->payload         = payload_buffer;
