@@ -182,51 +182,44 @@ int16_t socketcanPop(const SocketCANFD       fd,
         // Initialize the message header scatter/gather array.
         // We use the CAN FD struct regardless of whether the CAN FD socket option is set.
         // Per the user manual, this is acceptable because they are binary compatible.
-        struct iovec       iov           = {0};                    // Scatter/gather array items struct.
-        struct canfd_frame sockcan_frame = {0};                    // CAN FD frame storage.
-        iov.iov_base                     = &sockcan_frame;         // Starting address.
-        iov.iov_len                      = sizeof(sockcan_frame);  // Number of bytes to transfer.
+        struct canfd_frame sockcan_frame = {0};  // CAN FD frame storage.
+        struct iovec       iov           = {
+            // Scatter/gather array items struct.
+            .iov_base = &sockcan_frame,        // Starting address.
+            .iov_len  = sizeof(sockcan_frame)  // Number of bytes to transfer.
+
+        };
 
         // Determine the size of the ancillary data and zero-initialize the buffer for it.
-        // We require space for both the receive message and the time stamp.
-        // TODO: Aligned storage is used. --> Don't know how to do this in a portable way....
-        // TODO: C complains that the control_size is not known at compile time, hence the use of malloc/free.
-        //       Should not be needed, as those structs are fixed-size?? Ah, cmsghdr has a flexarray extension in c99?
-        const size_t control_size = sizeof(struct cmsghdr) + sizeof(struct timeval);
-        uint8_t*     control      = (uint8_t*) malloc(control_size);  // TODO: try to get rig of malloc!
-        if (control == NULL)
+        // We require space for both the receive message header and the time stamp.
+        // The ancillary data buffer is wrapped in a union to ensure it is suitably aligned.
+        // See the cmsg(3) man page (release 5.08 dated 2020-06-09, or later) for details.
+        union
         {
-            return -ENOMEM;
-        }
-        (void) memset(control, 0, control_size);
+            uint8_t        buf[CMSG_SPACE(sizeof(struct timeval))];
+            struct cmsghdr align;
+        } control;
+        (void) memset(control.buf, 0, sizeof(control.buf));
 
         // Initialize the message header used by recvmsg.
-        struct msghdr msg  = {0};           // Message header struct.
-        msg.msg_iov        = &iov;          // Scatter/gather array.
-        msg.msg_iovlen     = 1;             // Number of elements in the scatter/gather array.
-        msg.msg_control    = control;       // Ancillary data.
-        msg.msg_controllen = control_size;  // Ancillary data buffer length.
+        struct msghdr msg  = {0};                  // Message header struct.
+        msg.msg_iov        = &iov;                 // Scatter/gather array.
+        msg.msg_iovlen     = 1;                    // Number of elements in the scatter/gather array.
+        msg.msg_control    = control.buf;          // Ancillary data.
+        msg.msg_controllen = sizeof(control.buf);  // Ancillary data buffer length.
 
         // Non-blocking receive messages from the socket and validate.
         const ssize_t read_size = recvmsg(fd, &msg, MSG_DONTWAIT);
-        if (read_size <= 0)
+        if (read_size < 0)
         {
-            const int neg_errno = getNegatedErrno();
-
-            // Return either the negated error code, or zero in case the socket is marked nonblocking and the receive
-            // operation would block. POSIX.1-2001 allows either EWOULDBLOCK or EAGAIN to be returned for this case,
-            // and does not require these constants to have the same value. Thus, we check for both possibilities.
-            free(control);
-            return (read_size < 0 && (neg_errno == -EWOULDBLOCK || neg_errno == -EAGAIN)) ? 0 : neg_errno;
+            return getNegatedErrno();  // Error occurred -- return the negated error code.
         }
         if ((read_size != CAN_MTU) && (read_size != CANFD_MTU))
         {
-            free(control);
             return -EIO;
         }
         if (sockcan_frame.len > payload_buffer_size)
         {
-            free(control);
             return -EFBIG;
         }
 
@@ -235,14 +228,13 @@ int16_t socketcanPop(const SocketCANFD       fd,
                            ((sockcan_frame.can_id & CAN_RTR_FLAG) == 0);    // Not error frame
         if (!valid)
         {
-            free(control);
             return 0;  // Not an extended data frame -- drop silently and return early.
         }
 
-        const bool loopback_frame = ((uint32_t) msg.msg_flags & (uint32_t) MSG_CONFIRM) != 0;  // NOLINT
+        // Handle the loopback frame logic.
+        const bool loopback_frame = ((uint32_t) msg.msg_flags & (uint32_t) MSG_CONFIRM) != 0;
         if (loopback == NULL && loopback_frame)
         {
-            free(control);
             return 0;  // The loopback pointer is NULL and this is a loopback frame -- drop silently and return early.
         }
         if (loopback != NULL)
@@ -250,10 +242,8 @@ int16_t socketcanPop(const SocketCANFD       fd,
             *loopback = loopback_frame;
         }
 
-        // Obtain the CAN frame TAI time stamp from the kernel.
-        // Comparing to clock_gettime(CLOCK_TAI, &ts) proved that the time stamp is from the desired, monotonous
-        // TAI clock source.
-        // TODO: should I keep these assertion checks?
+        // Obtain the CAN frame time stamp from the kernel.
+        // This time stamp is from the CLOCK_REALTIME kernel source.
         const struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
         struct timeval        tv   = {0};
         assert(cmsg != NULL);
@@ -265,7 +255,6 @@ int16_t socketcanPop(const SocketCANFD       fd,
         else
         {
             assert(0);
-            free(control);
             return -EIO;
         }
 
@@ -275,8 +264,6 @@ int16_t socketcanPop(const SocketCANFD       fd,
         out_frame->payload_size    = sockcan_frame.len;
         out_frame->payload         = payload_buffer;
         (void) memcpy(payload_buffer, &sockcan_frame.data[0], sockcan_frame.len);
-
-        free(control);
     }
     return poll_result;
 }

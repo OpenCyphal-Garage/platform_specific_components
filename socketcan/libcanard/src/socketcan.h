@@ -48,7 +48,7 @@ int16_t socketcanPush(const SocketCANFD fd, const CanardFrame* const frame, cons
 /// If the received frame is not an extended-ID data frame, it will be dropped and the function will return early.
 /// The payload pointer of the returned frame will point to the payload_buffer. It can be a stack-allocated array.
 /// The payload_buffer_size shall be large enough (64 bytes is enough for CAN FD), otherwise an error is returned.
-/// The timestamp of the received frame will be set to the kernel CLOCK_TAI sampled near the moment of its arrival.
+/// The received frame timestamp will be set to CLOCK_REALTIME by the kernel, sampled near the moment of its arrival.
 /// The loopback flag pointer is used to both indicate and control behavior when a looped-back message is received.
 /// If the flag pointer is NULL, loopback frames are silently dropped; if not NULL, they are accepted and indicated
 /// using this flag.
