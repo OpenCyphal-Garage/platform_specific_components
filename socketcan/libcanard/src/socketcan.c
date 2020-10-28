@@ -1,6 +1,6 @@
 /// This software is distributed under the terms of the MIT License.
 /// Copyright (c) 2020 UAVCAN Development Team.
-/// Author: Pavel Kirienko <pavel.kirienko@zubax.com>
+/// Authors: Pavel Kirienko <pavel.kirienko@zubax.com>, Tom De Rybel <tom.derybel@robocow.be>
 
 // This is needed to enable the necessary declarations in sys/
 #ifndef _GNU_SOURCE
@@ -14,6 +14,7 @@
 #    include <linux/can/raw.h>
 #    include <net/if.h>
 #    include <sys/ioctl.h>
+#    include <sys/socket.h>
 #else
 #    error "Unsupported OS -- feel free to add support for your OS here. " \
         "Zephyr and NuttX are known to support the SocketCAN API."
@@ -21,10 +22,10 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <unistd.h>
 #include <poll.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #define KILO 1000L
 #define MEGA (KILO * KILO)
@@ -101,10 +102,25 @@ SocketCANFD socketcanOpen(const char* const iface_name, const bool can_fd)
         }
     }
 
+    // Enable CAN FD if required.
     if (ok && can_fd)
     {
         const int en = 1;
         ok           = 0 == setsockopt(fd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &en, sizeof(en));
+    }
+
+    // Enable timestamping.
+    if (ok)
+    {
+        const int en = 1;
+        ok           = 0 == setsockopt(fd, SOL_SOCKET, SO_TIMESTAMP, &en, sizeof(en));
+    }
+
+    // Enable outgoing-frame loop-back.
+    if (ok)
+    {
+        const int en = 1;
+        ok           = 0 == setsockopt(fd, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS, &en, sizeof(en));
     }
 
     if (ok)
@@ -152,7 +168,8 @@ int16_t socketcanPop(const SocketCANFD       fd,
                      CanardFrame* const      out_frame,
                      const size_t            payload_buffer_size,
                      void* const             payload_buffer,
-                     const CanardMicrosecond timeout_usec)
+                     const CanardMicrosecond timeout_usec,
+                     bool* const             loopback)
 {
     if ((out_frame == NULL) || (payload_buffer == NULL))
     {
@@ -162,43 +179,91 @@ int16_t socketcanPop(const SocketCANFD       fd,
     const int16_t poll_result = doPoll(fd, POLLIN, timeout_usec);
     if (poll_result > 0)
     {
-        struct timespec ts;
-        if (clock_gettime(CLOCK_TAI, &ts) < 0)  // TODO: request the timestamp from the kernel.
-        {
-            return getNegatedErrno();
-        }
-
+        // Initialize the message header scatter/gather array. It is to hold a single CAN FD frame struct.
         // We use the CAN FD struct regardless of whether the CAN FD socket option is set.
         // Per the user manual, this is acceptable because they are binary compatible.
-        struct canfd_frame cfd;
-        const ssize_t      read_size = read(fd, &cfd, sizeof(cfd));
+        struct canfd_frame sockcan_frame = {0};  // CAN FD frame storage.
+        struct iovec       iov           = {
+            // Scatter/gather array items struct.
+            .iov_base = &sockcan_frame,        // Starting address.
+            .iov_len  = sizeof(sockcan_frame)  // Number of bytes to transfer.
+
+        };
+
+        // Determine the size of the ancillary data and zero-initialize the buffer for it.
+        // We require space for both the receive message header (implied in CMSG_SPACE) and the time stamp.
+        // The ancillary data buffer is wrapped in a union to ensure it is suitably aligned.
+        // See the cmsg(3) man page (release 5.08 dated 2020-06-09, or later) for details.
+        union
+        {
+            uint8_t        buf[CMSG_SPACE(sizeof(struct timeval))];
+            struct cmsghdr align;
+        } control;
+        (void) memset(control.buf, 0, sizeof(control.buf));
+
+        // Initialize the message header used by recvmsg.
+        struct msghdr msg  = {0};                  // Message header struct.
+        msg.msg_iov        = &iov;                 // Scatter/gather array.
+        msg.msg_iovlen     = 1;                    // Number of elements in the scatter/gather array.
+        msg.msg_control    = control.buf;          // Ancillary data.
+        msg.msg_controllen = sizeof(control.buf);  // Ancillary data buffer length.
+
+        // Non-blocking receive messages from the socket and validate.
+        const ssize_t read_size = recvmsg(fd, &msg, MSG_DONTWAIT);
         if (read_size < 0)
         {
-            return getNegatedErrno();
+            return getNegatedErrno();  // Error occurred -- return the negated error code.
         }
         if ((read_size != CAN_MTU) && (read_size != CANFD_MTU))
         {
             return -EIO;
         }
-        if (cfd.len > payload_buffer_size)
+        if (sockcan_frame.len > payload_buffer_size)
         {
             return -EFBIG;
         }
 
-        const bool valid = ((cfd.can_id & CAN_EFF_FLAG) != 0) &&  // Extended frame
-                           ((cfd.can_id & CAN_RTR_FLAG) == 0) &&  // Not RTR frame
-                           ((cfd.can_id & CAN_ERR_FLAG) == 0);    // Not error frame
+        const bool valid = ((sockcan_frame.can_id & CAN_EFF_FLAG) != 0) &&  // Extended frame
+                           ((sockcan_frame.can_id & CAN_ERR_FLAG) == 0) &&  // Not RTR frame
+                           ((sockcan_frame.can_id & CAN_RTR_FLAG) == 0);    // Not error frame
         if (!valid)
         {
             return 0;  // Not an extended data frame -- drop silently and return early.
         }
 
+        // Handle the loopback frame logic.
+        const bool loopback_frame = ((uint32_t) msg.msg_flags & (uint32_t) MSG_CONFIRM) != 0;
+        if (loopback == NULL && loopback_frame)
+        {
+            return 0;  // The loopback pointer is NULL and this is a loopback frame -- drop silently and return early.
+        }
+        if (loopback != NULL)
+        {
+            *loopback = loopback_frame;
+        }
+
+        // Obtain the CAN frame time stamp from the kernel.
+        // This time stamp is from the CLOCK_REALTIME kernel source.
+        const struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+        struct timeval        tv   = {0};
+        assert(cmsg != NULL);
+        if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SO_TIMESTAMP)
+        {
+            (void) memcpy(&tv, CMSG_DATA(cmsg), sizeof(tv));  // Copy to avoid alignment problems
+            assert(tv.tv_sec >= 0 && tv.tv_usec >= 0);
+        }
+        else
+        {
+            assert(0);
+            return -EIO;
+        }
+
         (void) memset(out_frame, 0, sizeof(CanardFrame));
-        out_frame->timestamp_usec  = (CanardMicrosecond)((ts.tv_sec * MEGA) + (ts.tv_nsec / KILO));
-        out_frame->extended_can_id = cfd.can_id & CAN_EFF_MASK;
-        out_frame->payload_size    = cfd.len;
+        out_frame->timestamp_usec  = (CanardMicrosecond)(((uint64_t) tv.tv_sec * MEGA) + (uint64_t) tv.tv_usec);
+        out_frame->extended_can_id = sockcan_frame.can_id & CAN_EFF_MASK;
+        out_frame->payload_size    = sockcan_frame.len;
         out_frame->payload         = payload_buffer;
-        (void) memcpy(payload_buffer, &cfd.data[0], cfd.len);
+        (void) memcpy(payload_buffer, &sockcan_frame.data[0], sockcan_frame.len);
     }
     return poll_result;
 }
