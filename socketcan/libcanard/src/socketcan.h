@@ -12,6 +12,15 @@
 /// To integrate the library into your application, just copy-paste the c/h files into your project tree.
 ///
 /// --------------------------------------------------------------------------------------------------------------------
+/// Changelog
+///
+/// v0.1 - Added loop-back functionality.
+///        API change in socketcanPop(): loopback flag added.
+///      - Changed to kernel-based time-stamping for received frames for improved accuracy.
+///        API change in socketcanPop(): time stamp clock source is now CLOCK_REALTIME, vs CLOCK_TAI before.
+///
+/// v0.0 - Initial release
+/// --------------------------------------------------------------------------------------------------------------------
 ///
 /// This software is distributed under the terms of the MIT License.
 /// Copyright (c) 2020 UAVCAN Development Team.

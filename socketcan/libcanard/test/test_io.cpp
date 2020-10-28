@@ -143,7 +143,7 @@ TEST_CASE("IO-FD-Loopback")
     REQUIRE(1 == socketcanPop(sa, &fr, sizeof(buf), buf, 1000, &loopback));  // Receive loopback frame on sa.
     REQUIRE(loopback == true);
     REQUIRE(fr.timestamp_usec > 0);
-    REQUIRE(fr.timestamp_usec >= old_ts); // TODO: time relation still sensible? Appears to be equal...
+    REQUIRE(fr.timestamp_usec >= old_ts);
     REQUIRE(fr.extended_can_id == 0x1234U);
     REQUIRE(fr.payload_size == 13);
     REQUIRE(0 == std::memcmp(fr.payload, "Hello World!", 13));
