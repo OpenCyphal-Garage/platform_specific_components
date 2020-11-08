@@ -1,0 +1,59 @@
+///                         __   __   _______   __   __   _______   _______   __   __
+///                        |  | |  | /   _   ` |  | |  | /   ____| /   _   ` |  ` |  |
+///                        |  | |  | |  |_|  | |  | |  | |  |      |  |_|  | |   `|  |
+///                        |  |_|  | |   _   | `  `_/  / |  |____  |   _   | |  |`   |
+///                        `_______/ |__| |__|  `_____/  `_______| |__| |__| |__| `__|
+///                            |      |            |         |      |         |
+///                        ----o------o------------o---------o------o---------o-------
+///
+///
+/// This software is distributed under the terms of the MIT License.
+/// Copyright (c) 2020 UAVCAN Development Team.
+/// Author: Göran Mannberg <mannberg@gmail.com>
+
+cc_defaults {
+    name: "libcanardsocketcan_defaults",
+    shared_libs: [
+    ],
+    cflags: [
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fexceptions",
+    ],
+}
+
+cc_defaults {
+    name: "libcanardsocketcan_v1_0_target_defaults",
+    defaults: ["libcanardsocketcan_defaults"],
+}
+
+// socketcan canard
+cc_library {
+    name: "canardsocketcan@1.0-lib",
+    vendor: true,
+    defaults: ["libcanardsocketcan_v1_0_target_defaults"],
+    srcs: [
+        "src/socketcan.c",
+    ],
+    static_libs: [
+        "canard@1.0-lib",
+    ],
+    export_include_dirs: ["src"],
+}
+
+// socketcan libcanard test binary
+cc_binary {
+    name: "socketcanard-test_main",
+    defaults: ["libcanardsocketcan_v1_0_target_defaults"],
+    vendor: true,
+    relative_install_path: "hw",
+    srcs: [
+        "test/main.cpp",
+        "test/test_io.cpp",
+    ],
+    static_libs: [
+        "canard@1.0-lib",
+        "canardsocketcan@1.0-lib",
+    ],
+}
