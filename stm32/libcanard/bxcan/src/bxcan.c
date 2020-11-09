@@ -18,7 +18,7 @@
 /// If using official HAL from ST, set to global variable SystemCoreClock
 #ifdef USE_HAL_DRIVER
 extern uint32_t SystemCoreClock;
-#define BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK SystemCoreClock
+#    define BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK SystemCoreClock
 #else
 #    if !defined(BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK)
 #        error "Please set BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK to the current system core clock."
@@ -102,8 +102,7 @@ static bool waitMSRINAKBitStateChange(volatile const BxCANType* const bxcan_base
         // The counter variable is declared volatile to prevent the compiler from optimizing it away.
         volatile size_t nticks = BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK / 7000U;
         while (--nticks)
-        {
-        }
+        {}
     }
 
     return out_status;
