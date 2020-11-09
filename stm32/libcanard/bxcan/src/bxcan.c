@@ -16,7 +16,7 @@
 /// Configure the system core clock frequency in Hz.
 /// Only used by the busy wait in waitMSRINAKBitStateChange().
 /// If using official HAL from ST, set to global variable SystemCoreClock
-#ifdef USE_HAL_DRIVER
+#if defined(USE_HAL_DRIVER) && USE_HAL_DRIVER
 extern uint32_t SystemCoreClock;
 #    define BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK SystemCoreClock
 #else
@@ -24,6 +24,7 @@ extern uint32_t SystemCoreClock;
 #        error "Please set BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK to the current system core clock."
 #    endif
 #endif
+
 /// By default, this macro resolves to the standard assert(). The user can redefine this if necessary.
 /// To disable assertion checks completely, make it expand into `(void)(0)`.
 #ifndef BXCAN_ASSERT
