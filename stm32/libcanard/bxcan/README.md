@@ -9,6 +9,7 @@ Please consult with the applicable documentation from ST Microelectronics for de
 So far this driver has been tested at least with the following MCU:
 
 * STM32L431
+* STM32F446
 * Please extend this list if you used it with other MCU.
 
 ## Features
