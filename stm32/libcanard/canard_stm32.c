@@ -138,7 +138,7 @@ static bool waitMSRINAKBitStateChange(volatile const CanardSTM32CANType* const b
         }
 
         // Sleep 1 millisecond
-        //usleep(1000);           // TODO: This function may be missing on some platforms
+        usleep(1000);           // TODO: This function may be missing on some platforms
     }
 
     return false;
