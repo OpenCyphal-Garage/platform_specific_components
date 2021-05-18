@@ -19,11 +19,27 @@ extern "C"
 #endif
 
 /**
- * Set this build config macro to 1 to use CAN2 instead of CAN1, if available.
+ * Set this build config macro to 1 to use CAN1
+ * Setting this parameter when CAN1 is not available may not be detected at compile time!
+ */
+#if !defined(CANARD_STM32_USE_CAN1)
+# define CANARD_STM32_USE_CAN1                                  0
+#endif
+
+/**
+ * Set this build config macro to 1 to use CAN2 instead of CAN1
  * Setting this parameter when CAN2 is not available may not be detected at compile time!
  */
 #if !defined(CANARD_STM32_USE_CAN2)
 # define CANARD_STM32_USE_CAN2                                  0
+#endif
+
+/**
+ * Set this build config macro to 1 to use CAN3 instead of CAN1
+ * Setting this parameter when CAN3 is not available may not be detected at compile time!
+ */
+#if !defined(CANARD_STM32_USE_CAN3)
+# define CANARD_STM32_USE_CAN3                                  1
 #endif
 
 /**
