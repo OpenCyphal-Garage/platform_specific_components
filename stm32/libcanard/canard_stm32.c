@@ -12,14 +12,14 @@
 
 
 #if CANARD_STM32_USE_CAN3
-# define BXCAN                                                 CANARD_STM32_CAN3
-# define FILTER_CONFIG_BXCAN                                   CANARD_STM32_CAN3
+# define BXCAN                                                  CANARD_STM32_CAN3
+# define FILTER_CONFIG_BXCAN                                    CANARD_STM32_CAN3
 #elif CANARD_STM32_USE_CAN2
-# define BXCAN                                                 CANARD_STM32_CAN2
-# define FILTER_CONFIG_BXCAN                                   CANARD_STM32_CAN1
+# define BXCAN                                                  CANARD_STM32_CAN2
+# define FILTER_CONFIG_BXCAN                                    CANARD_STM32_CAN1
 #elif CANARD_STM32_USE_CAN1
-# define BXCAN                                                 CANARD_STM32_CAN1
-# define FILTER_CONFIG_BXCAN                                   CANARD_STM32_CAN1
+# define BXCAN                                                  CANARD_STM32_CAN1
+# define FILTER_CONFIG_BXCAN                                    CANARD_STM32_CAN1
 #endif
 
 /*
@@ -465,7 +465,7 @@ int16_t canardSTM32ConfigureAcceptanceFilters(const CanardSTM32AcceptanceFilterC
      * First we disable all filters. This may cause momentary RX frame losses, but the application
      * should be able to tolerate that.
      */
-     BXCAN->FA1R = 0;
+    BXCAN->FA1R = 0;
 
     /*
      * Having filters disabled we can update the configuration.

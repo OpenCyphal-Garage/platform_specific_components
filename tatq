@@ -1,0 +1,148 @@
+[1mdiff --git a/stm32/libcanard/_internal_bxcan.h b/stm32/libcanard/_internal_bxcan.h[m
+[1mindex 13dd7b5..4556b8b 100644[m
+[1m--- a/stm32/libcanard/_internal_bxcan.h[m
+[1m+++ b/stm32/libcanard/_internal_bxcan.h[m
+[36m@@ -65,6 +65,7 @@[m [mtypedef struct[m
+  */[m
+ #define CANARD_STM32_CAN1       ((volatile CanardSTM32CANType*)0x40006400U)[m
+ #define CANARD_STM32_CAN2       ((volatile CanardSTM32CANType*)0x40006800U)[m
+[32m+[m[32m#define CANARD_STM32_CAN3       ((volatile CanardSTM32CANType*)0x40003400U)[m
+ [m
+ // CAN master control register[m
+ [m
+[1mdiff --git a/stm32/libcanard/canard_stm32.c b/stm32/libcanard/canard_stm32.c[m
+[1mindex 9ffbf38..d1c7c72 100644[m
+[1m--- a/stm32/libcanard/canard_stm32.c[m
+[1m+++ b/stm32/libcanard/canard_stm32.c[m
+[36m@@ -11,9 +11,11 @@[m
+ #include <unistd.h>[m
+ [m
+ [m
+[31m-#if CANARD_STM32_USE_CAN2[m
+[32m+[m[32m#if   CANARD_STM32_USE_CAN3[m
+[32m+[m[32m#define  BXCAN                                                  CANARD_STM32_CAN3[m
+[32m+[m[32m#elif CANARD_STM32_USE_CAN2[m
+ # define BXCAN                                                  CANARD_STM32_CAN2[m
+[31m-#else[m
+[32m+[m[32m#elif CANARD_STM32_USE_CAN1[m
+ # define BXCAN                                                  CANARD_STM32_CAN1[m
+ #endif[m
+ [m
+[36m@@ -229,7 +231,7 @@[m [mint16_t canardSTM32Init(const CanardSTM32CANTimings* const timings,[m
+                  ((timings->bit_rate_prescaler - 1U)                & 1023U) |[m
+                  ((iface_mode == CanardSTM32IfaceModeSilent) ? CANARD_STM32_CAN_BTR_SILM : 0);[m
+ [m
+[31m-    CANARD_ASSERT(0 == BXCAN->IER);             // Making sure the iterrupts are indeed disabled[m
+[32m+[m[32m   CANARD_ASSERT(0 == BXCAN->IER);             // Making sure the interrupts are indeed disabled[m
+ [m
+     BXCAN->MCR &= ~CANARD_STM32_CAN_MCR_INRQ;   // Leave init mode[m
+ [m
+[36m@@ -245,34 +247,34 @@[m [mint16_t canardSTM32Init(const CanardSTM32CANTimings* const timings,[m
+      * We use 14 filters at most always which simplifies the code and ensures compatibility with all[m
+      * MCU within the STM32 family.[m
+      */[m
+[31m-    {[m
+[31m-        uint32_t fmr = CANARD_STM32_CAN1->FMR & 0xFFFFC0F1U;[m
+[32m+[m[32m    if(CANARD_STM32_USE_CAN3 | CANARD_STM32_USE_CAN1){[m
+[32m+[m[32m        uint32_t fmr = BXCAN->FMR & 0xFFFFC0F1U;[m
+         fmr |= CANARD_STM32_NUM_ACCEPTANCE_FILTERS << 8U;                // CAN2 start bank = 14 (if CAN2 is present)[m
+[31m-        CANARD_STM32_CAN1->FMR = fmr | CANARD_STM32_CAN_FMR_FINIT;[m
+[31m-    }[m
+[32m+[m[32m        BXCAN->FMR = fmr | CANARD_STM32_CAN_FMR_FINIT;[m
+ [m
+[31m-    CANARD_ASSERT(((CANARD_STM32_CAN1->FMR >> 8U) & 0x3FU) == CANARD_STM32_NUM_ACCEPTANCE_FILTERS);[m
+[32m+[m[32m        CANARD_ASSERT(((BXCAN->FMR >> 8U) & 0x3FU) == CANARD_STM32_NUM_ACCEPTANCE_FILTERS);[m
+ [m
+[31m-    CANARD_STM32_CAN1->FM1R = 0;                                        // Indentifier Mask mode[m
+[31m-    CANARD_STM32_CAN1->FS1R = 0x0FFFFFFF;                               // All 32-bit[m
+[32m+[m[32m        BXCAN->FM1R = 0;                                        // Identifier Mask mode[m
+[32m+[m[32m        BXCAN->FS1R = 0x0FFFFFFF;                               // All 32-bit[m
+ [m
+[31m-    // Filters are alternating between FIFO0 and FIFO1 in order to equalize the load.[m
+[31m-    // This will cause occasional priority inversion and frame reordering on reception,[m
+[31m-    // but that is acceptable for UAVCAN, and a majority of other protocols will tolerate[m
+[31m-    // this too, since there will be no reordering within the same CAN ID.[m
+[31m-    CANARD_STM32_CAN1->FFA1R = 0x0AAAAAAA;[m
+[32m+[m[32m        // Filters are alternating between FIFO0 and FIFO1 in order to equalize the load.[m
+[32m+[m[32m        // This will cause occasional priority inversion and frame reordering on reception,[m
+[32m+[m[32m        // but that is acceptable for UAVCAN, and a majority of other protocols will tolerate[m
+[32m+[m[32m        // this too, since there will be no reordering within the same CAN ID.[m
+[32m+[m[32m        BXCAN->FFA1R = 0x0AAAAAAA;[m
+[32m+[m[32m    }[m
+ [m
+ #if CANARD_STM32_USE_CAN2[m
+     CANARD_STM32_CAN1->FilterRegister[CANARD_STM32_NUM_ACCEPTANCE_FILTERS].FR1 = 0;[m
+     CANARD_STM32_CAN1->FilterRegister[CANARD_STM32_NUM_ACCEPTANCE_FILTERS].FR2 = 0;[m
+     CANARD_STM32_CAN1->FA1R = (1 << CANARD_STM32_NUM_ACCEPTANCE_FILTERS);  // One filter enabled[m
+ #else[m
+[31m-    CANARD_STM32_CAN1->FilterRegister[0].FR1 = 0;[m
+[31m-    CANARD_STM32_CAN1->FilterRegister[0].FR2 = 0;[m
+[31m-    CANARD_STM32_CAN1->FA1R = 1;                                        // One filter enabled[m
+[32m+[m[32m    BXCAN->FilterRegister[0].FR1 = 0;[m
+[32m+[m[32m    BXCAN->FilterRegister[0].FR2 = 0;[m
+[32m+[m[32m    BXCAN->FA1R = 1;                                        // One filter enabled[m
+ #endif[m
+ [m
+[31m-    CANARD_STM32_CAN1->FMR &= ~CANARD_STM32_CAN_FMR_FINIT;              // Leave initialization mode[m
+[32m+[m[32m    BXCAN->FMR &= ~CANARD_STM32_CAN_FMR_FINIT;              // Leave initialization mode[m
+ [m
+     return 0;[m
+ }[m
+[36m@@ -460,7 +462,7 @@[m [mint16_t canardSTM32ConfigureAcceptanceFilters(const CanardSTM32AcceptanceFilterC[m
+      * First we disable all filters. This may cause momentary RX frame losses, but the application[m
+      * should be able to tolerate that.[m
+      */[m
+[31m-    CANARD_STM32_CAN1->FA1R = 0;[m
+[32m+[m[32m     BXCAN->FA1R = 0;[m
+ [m
+     /*[m
+      * Having filters disabled we can update the configuration.[m
+[36m@@ -552,10 +554,10 @@[m [mint16_t canardSTM32ConfigureAcceptanceFilters(const CanardSTM32AcceptanceFilterC[m
+ #else[m
+             i;[m
+ #endif[m
+[31m-        CANARD_STM32_CAN1->FilterRegister[filter_index].FR1 = id;[m
+[31m-        CANARD_STM32_CAN1->FilterRegister[filter_index].FR2 = mask;[m
+[32m+[m[32m        BXCAN->FilterRegister[filter_index].FR1 = id;[m
+[32m+[m[32m        BXCAN->FilterRegister[filter_index].FR2 = mask;[m
+ [m
+[31m-        CANARD_STM32_CAN1->FA1R |= 1U << filter_index;      // Enable[m
+[32m+[m[32m        BXCAN->FA1R |= 1U << filter_index;      // Enable[m
+     }[m
+ [m
+     return 0;[m
+[1mdiff --git a/stm32/libcanard/canard_stm32.h b/stm32/libcanard/canard_stm32.h[m
+[1mindex 7b8414c..c8ed079 100644[m
+[1m--- a/stm32/libcanard/canard_stm32.h[m
+[1m+++ b/stm32/libcanard/canard_stm32.h[m
+[36m@@ -19,13 +19,29 @@[m [mextern "C"[m
+ #endif[m
+ [m
+ /**[m
+[31m- * Set this build config macro to 1 to use CAN2 instead of CAN1, if available.[m
+[32m+[m[32m * Set this build config macro to 1 to use CAN1[m
+[32m+[m[32m * Setting this parameter when CAN1 is not available may not be detected at compile time![m
+[32m+[m[32m */[m
+[32m+[m[32m#if !defined(CANARD_STM32_USE_CAN1)[m
+[32m+[m[32m# define CANARD_STM32_USE_CAN1                                  0[m
+[32m+[m[32m#endif[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Set this build config macro to 1 to use CAN2 instead of CAN1[m
+  * Setting this parameter when CAN2 is not available may not be detected at compile time![m
+  */[m
+ #if !defined(CANARD_STM32_USE_CAN2)[m
+ # define CANARD_STM32_USE_CAN2                                  0[m
+ #endif[m
+ [m
+[32m+[m[32m/**[m
+[32m+[m[32m * Set this build config macro to 1 to use CAN3 instead of CAN1[m
+[32m+[m[32m * Setting this parameter when CAN3 is not available may not be detected at compile time![m
+[32m+[m[32m */[m
+[32m+[m[32m#if !defined(CANARD_STM32_USE_CAN3)[m
+[32m+[m[32m# define CANARD_STM32_USE_CAN3                                  1[m
+[32m+[m[32m#endif[m
+[32m+[m
+ /**[m
+  * Trigger an assertion failure if inner priority inversion is detected at run time.[m
+  * This setting has no effect in release builds, where NDEBUG is defined.[m
