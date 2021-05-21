@@ -465,7 +465,7 @@ int16_t canardSTM32ConfigureAcceptanceFilters(const CanardSTM32AcceptanceFilterC
      * First we disable all filters. This may cause momentary RX frame losses, but the application
      * should be able to tolerate that.
      */
-    BXCAN->FA1R = 0;
+    FILTER_CONFIG_BXCAN->FA1R = 0;
 
     /*
      * Having filters disabled we can update the configuration.
