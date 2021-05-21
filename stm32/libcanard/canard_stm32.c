@@ -12,11 +12,14 @@
 
 
 #if   CANARD_STM32_USE_CAN3
-#define  BXCAN                                                  CANARD_STM32_CAN3
+# define  BXCAN                                                  CANARD_STM32_CAN3
+# define  FILTER_CONFIG_BXCAN                                    CANARD_STM32_CAN3
 #elif CANARD_STM32_USE_CAN2
-# define BXCAN                                                  CANARD_STM32_CAN2
+# define BXCAN                                                   CANARD_STM32_CAN2
+# define  FILTER_CONFIG_BXCAN                                    CANARD_STM32_CAN1
 #elif CANARD_STM32_USE_CAN1
-# define BXCAN                                                  CANARD_STM32_CAN1
+# define BXCAN                                                   CANARD_STM32_CAN1
+# define  FILTER_CONFIG_BXCAN                                    CANARD_STM32_CAN1
 #endif
 
 /*
@@ -247,22 +250,22 @@ int16_t canardSTM32Init(const CanardSTM32CANTimings* const timings,
      * We use 14 filters at most always which simplifies the code and ensures compatibility with all
      * MCU within the STM32 family.
      */
-    if(CANARD_STM32_USE_CAN3 | CANARD_STM32_USE_CAN1){
-        uint32_t fmr = BXCAN->FMR & 0xFFFFC0F1U;
+     {
+        uint32_t fmr = FILTER_CONFIG_BXCAN->FMR & 0xFFFFC0F1U;
         fmr |= CANARD_STM32_NUM_ACCEPTANCE_FILTERS << 8U;                // CAN2 start bank = 14 (if CAN2 is present)
-        BXCAN->FMR = fmr | CANARD_STM32_CAN_FMR_FINIT;
+        FILTER_CONFIG_BXCAN->FMR = fmr | CANARD_STM32_CAN_FMR_FINIT;
+     }
 
-        CANARD_ASSERT(((BXCAN->FMR >> 8U) & 0x3FU) == CANARD_STM32_NUM_ACCEPTANCE_FILTERS);
+     CANARD_ASSERT(((FILTER_CONFIG_BXCAN->FMR >> 8U) & 0x3FU) == CANARD_STM32_NUM_ACCEPTANCE_FILTERS);
 
-        BXCAN->FM1R = 0;                                        // Identifier Mask mode
-        BXCAN->FS1R = 0x0FFFFFFF;                               // All 32-bit
+     FILTER_CONFIG_BXCAN->FM1R = 0;                                        // Identifier Mask mode
+     FILTER_CONFIG_BXCAN->FS1R = 0x0FFFFFFF;                               // All 32-bit
 
-        // Filters are alternating between FIFO0 and FIFO1 in order to equalize the load.
-        // This will cause occasional priority inversion and frame reordering on reception,
-        // but that is acceptable for UAVCAN, and a majority of other protocols will tolerate
-        // this too, since there will be no reordering within the same CAN ID.
-        BXCAN->FFA1R = 0x0AAAAAAA;
-    }
+     // Filters are alternating between FIFO0 and FIFO1 in order to equalize the load.
+     // This will cause occasional priority inversion and frame reordering on reception,
+     // but that is acceptable for UAVCAN, and a majority of other protocols will tolerate
+     // this too, since there will be no reordering within the same CAN ID.
+     FILTER_CONFIG_BXCAN->FFA1R = 0x0AAAAAAA;
 
 #if CANARD_STM32_USE_CAN2
     CANARD_STM32_CAN1->FilterRegister[CANARD_STM32_NUM_ACCEPTANCE_FILTERS].FR1 = 0;
@@ -274,7 +277,7 @@ int16_t canardSTM32Init(const CanardSTM32CANTimings* const timings,
     BXCAN->FA1R = 1;                                        // One filter enabled
 #endif
 
-    BXCAN->FMR &= ~CANARD_STM32_CAN_FMR_FINIT;              // Leave initialization mode
+    FILTER_CONFIG_BXCAN->FMR &= ~CANARD_STM32_CAN_FMR_FINIT;              // Leave initialization mode
 
     return 0;
 }
