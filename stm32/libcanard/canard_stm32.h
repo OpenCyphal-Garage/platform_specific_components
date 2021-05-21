@@ -39,7 +39,7 @@ extern "C"
  * Setting this parameter when CAN3 is not available may not be detected at compile time!
  */
 #if !defined(CANARD_STM32_USE_CAN3)
-# define CANARD_STM32_USE_CAN3                                  1
+# define CANARD_STM32_USE_CAN3                                  0
 #endif
 
 /**
