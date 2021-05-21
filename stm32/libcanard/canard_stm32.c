@@ -11,15 +11,15 @@
 #include <unistd.h>
 
 
-#if   CANARD_STM32_USE_CAN3
-# define  BXCAN                                                  CANARD_STM32_CAN3
-# define  FILTER_CONFIG_BXCAN                                    CANARD_STM32_CAN3
+#if CANARD_STM32_USE_CAN3
+# define BXCAN                                                 CANARD_STM32_CAN3
+# define FILTER_CONFIG_BXCAN                                   CANARD_STM32_CAN3
 #elif CANARD_STM32_USE_CAN2
-# define BXCAN                                                   CANARD_STM32_CAN2
-# define  FILTER_CONFIG_BXCAN                                    CANARD_STM32_CAN1
+# define BXCAN                                                 CANARD_STM32_CAN2
+# define FILTER_CONFIG_BXCAN                                   CANARD_STM32_CAN1
 #elif CANARD_STM32_USE_CAN1
-# define BXCAN                                                   CANARD_STM32_CAN1
-# define  FILTER_CONFIG_BXCAN                                    CANARD_STM32_CAN1
+# define BXCAN                                                 CANARD_STM32_CAN1
+# define FILTER_CONFIG_BXCAN                                   CANARD_STM32_CAN1
 #endif
 
 /*
@@ -258,8 +258,8 @@ int16_t canardSTM32Init(const CanardSTM32CANTimings* const timings,
 
     CANARD_ASSERT(((FILTER_CONFIG_BXCAN->FMR >> 8U) & 0x3FU) == CANARD_STM32_NUM_ACCEPTANCE_FILTERS);
 
-    FILTER_CONFIG_BXCAN->FM1R = 0;                                        // Identifier Mask mode
-    FILTER_CONFIG_BXCAN->FS1R = 0x0FFFFFFF;                               // All 32-bit
+    FILTER_CONFIG_BXCAN->FM1R = 0;                                       // Identifier Mask mode
+    FILTER_CONFIG_BXCAN->FS1R = 0x0FFFFFFF;                              // All 32-bit
 
     // Filters are alternating between FIFO0 and FIFO1 in order to equalize the load.
     // This will cause occasional priority inversion and frame reordering on reception,
@@ -277,7 +277,7 @@ int16_t canardSTM32Init(const CanardSTM32CANTimings* const timings,
     BXCAN->FA1R = 1;                                        // One filter enabled
 #endif
 
-    FILTER_CONFIG_BXCAN->FMR &= ~CANARD_STM32_CAN_FMR_FINIT;              // Leave initialization mode
+    FILTER_CONFIG_BXCAN->FMR &= ~CANARD_STM32_CAN_FMR_FINIT;             // Leave initialization mode
 
     return 0;
 }
