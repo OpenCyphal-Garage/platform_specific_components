@@ -557,8 +557,8 @@ int16_t canardSTM32ConfigureAcceptanceFilters(const CanardSTM32AcceptanceFilterC
 #else
             i;
 #endif
-        BXCAN->FilterRegister[filter_index].FR1 = id;
-        BXCAN->FilterRegister[filter_index].FR2 = mask;
+        FILTER_CONFIG_BXCAN->FilterRegister[filter_index].FR1 = id;
+        FILTER_CONFIG_BXCAN->FilterRegister[filter_index].FR2 = mask;
 
         BXCAN->FA1R |= 1U << filter_index;      // Enable
     }
