@@ -272,8 +272,8 @@ int16_t canardSTM32Init(const CanardSTM32CANTimings* const timings,
     CANARD_STM32_CAN1->FilterRegister[CANARD_STM32_NUM_ACCEPTANCE_FILTERS].FR2 = 0;
     CANARD_STM32_CAN1->FA1R = (1 << CANARD_STM32_NUM_ACCEPTANCE_FILTERS);  // One filter enabled
 #else
-    BXCAN->FilterRegister[0].FR1 = 0;
-    BXCAN->FilterRegister[0].FR2 = 0;
+    FILTER_CONFIG_BXCAN->FilterRegister[0].FR1 = 0;
+    FILTER_CONFIG_BXCAN->FilterRegister[0].FR2 = 0;
     BXCAN->FA1R = 1;                                        // One filter enabled
 #endif
 
