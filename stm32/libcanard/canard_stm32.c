@@ -23,7 +23,7 @@
 #endif
 
 #ifndef BXCAN
-#error BXCAN not defined. Make a selection for BXCAN using the build config macros in canard_stm32.h.
+# error BXCAN not defined. Make a selection for BXCAN using the build config macros in canard_stm32.h.
 #endif
 
 /*
