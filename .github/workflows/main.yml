@@ -1,0 +1,69 @@
+name: Main Workflow
+
+on: [push, pull_request]
+
+jobs:
+  # socketcan/libcanard
+  socketcan:
+    strategy:
+      matrix:
+        build_type: ["Debug", "Release"]
+
+    env:
+      CC: gcc-10
+      CXX: g++-10
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Install Dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt install gcc-10 g++-10 linux-libc-dev:i386 linux-*-extra-$(uname -r)
+
+      - name: Configure CMake
+        env:
+          BUILD_TYPE: ${{ matrix.build_type }}
+        working-directory: ${{github.workspace}}/socketcan/libcanard/
+        run: cmake test -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+      - name: Build
+        working-directory: ${{github.workspace}}/socketcan/libcanard/
+        run: make all VERBOSE=1
+
+      - name: Test
+        working-directory: ${{github.workspace}}/socketcan/libcanard/
+        run: make test
+
+  # stm32/libcanard/bxcan
+  stm32:
+    env:
+      CC: gcc-10
+      CXX: g++-10
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt install gcc-10 g++-10 gcc-10-multilib g++-10-multilib clang-tidy-10 clang-format-10
+          wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 10
+
+      - name: Static analysis
+        working-directory: ${{github.workspace}}/stm32/libcanard/bxcan/
+        run: clang-tidy-10 src/*.c --extra-arg='-DBXCAN_MAX_IFACE_INDEX=1' --extra-arg='-DBXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK=72000000'
+
+      - name: Format check
+        working-directory: ${{github.workspace}}/stm32/libcanard/bxcan/
+        run: |
+          clang-format-10 -i -fallback-style=none -style=file --verbose src/*.[ch]
+          modified="$(git status --porcelain --untracked-files=no)"
+          if [ -n "$modified" ]; then echo "Please format code properly."; exit 1; fi
