@@ -278,7 +278,7 @@ int16_t canardSTM32Init(const CanardSTM32CANTimings* const timings,
 #else
     FILTER_CONFIG_BXCAN->FilterRegister[0].FR1 = 0;
     FILTER_CONFIG_BXCAN->FilterRegister[0].FR2 = 0;
-    FILTER_CONFIG_BXCAN->FA1R = 1;                                        // One filter enabled
+    FILTER_CONFIG_BXCAN->FA1R = FILTER_CONFIG_BXCAN->FA1R | (1 << 0);                                        // One filter enabled
 #endif
 
     FILTER_CONFIG_BXCAN->FMR &= ~CANARD_STM32_CAN_FMR_FINIT;             // Leave initialization mode
