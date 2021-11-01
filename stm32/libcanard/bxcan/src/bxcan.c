@@ -276,8 +276,6 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
                           ((timings.bit_rate_prescaler - 1U) & 1023U) |           //
                           (silent ? BXCAN_BTR_SILM : 0U);
 
-        BXCAN_ASSERT(bxcan_base->IER == 0U);  // Make sure the interrupts are indeed disabled.
-
         bxcan_base->MCR &= ~BXCAN_MCR_INRQ;  // Leave init mode.
 
         if (!waitMSRINAKBitStateChange(bxcan_base, false))
