@@ -205,18 +205,15 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
     // Select the appropriate CAN interface base address and zero the error flags for it.
     // If the interface number is invalid, return with an error.
     volatile BxCANType* bxcan_base   = NULL;  // Selected CAN interface base address.
-    uint8_t             filter_index = 0U;
     if (iface_index == 0U)
     {
         bxcan_base   = BXCAN1;
         g_error[0]   = false;
-        filter_index = 0U;  // First filter slot for CAN1.
     }
     else if ((iface_index == 1U) && (BXCAN_MAX_IFACE_INDEX == 1U))
     {
         bxcan_base   = BXCAN2;
         g_error[1]   = false;
-        filter_index = (uint8_t) BXCAN_NUM_ACCEPTANCE_FILTERS;  // First filter slot for CAN2.
     }
     else
     {
@@ -302,44 +299,51 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
         // This will cause occasional priority inversion and frame reordering on reception,
         // but that is acceptable for UAVCAN, and a majority of other protocols will tolerate
         // this too, since there will be no reordering within the same CAN ID.
-        if (BXCAN_MAX_IFACE_INDEX > 0)
+        if (iface_index == 0U)
         {
-            // MCU with two bxCAN interfaces: configure the filter start banks for each interface.
-            // Example MCU: STM32F446.
-            // Note: block statement is introduced to contain the scope of fmr (defensive programming).
+            if (BXCAN_MAX_IFACE_INDEX > 0)
             {
-                uint32_t fmr = BXCAN1->FMR & 0xFFFFC0FEU;
-                fmr |= BXCAN_NUM_ACCEPTANCE_FILTERS << 8U;  // CAN2 start bank = 14 (if CAN2 is present)
-                BXCAN1->FMR = fmr | BXCAN_FMR_FINIT;        // Set the configuration, enter filter initialization mode.
+                // MCU with two bxCAN interfaces: configure the filter start banks for each interface.
+                // Example MCU: STM32F446.
+                {
+                    uint32_t fmr = BXCAN1->FMR & 0xFFFFC0FEU;
+                    fmr |= BXCAN_NUM_ACCEPTANCE_FILTERS << 8U;  // CAN2 start bank = 14 (if CAN2 is present)
+                    BXCAN1->FMR = fmr | BXCAN_FMR_FINIT;  // Set the configuration, enter filter initialization mode.
+                }
+
+                BXCAN_ASSERT(((BXCAN1->FMR >> 8U) & 0x3FU) == BXCAN_NUM_ACCEPTANCE_FILTERS);
+
+                BXCAN1->FM1R &= 0xF0000000U;  // Identifier Mask mode. (4 MSB are reserved.)
+                BXCAN1->FS1R |= 0x0FFFFFFFU;  // All 32-bit filters. (4 MSB are reserved.)
+
+                BXCAN1->FFA1R =
+                    (BXCAN1->FFA1R & 0xF0000000U) | 0x0AAAAAAAU;  // Alternate the filters between FIFO0 & FIFO1.
+
+                // Configure one "accept all" filter and enable it.
+                BXCAN1->FilterRegister[BXCAN_NUM_ACCEPTANCE_FILTERS].FR1 = 0U;
+                BXCAN1->FilterRegister[BXCAN_NUM_ACCEPTANCE_FILTERS].FR2 = 0U;
+                BXCAN1->FA1R |= (1U << BXCAN_NUM_ACCEPTANCE_FILTERS);
+            }
+            else
+            {
+                // MCU with single bxCAN interface has no filter start bank configuration in FMR.
+                // Example MCU: STM32L431.
+                BXCAN1->FMR |= BXCAN_FMR_FINIT;  // Enter filter initialization mode.
+
+                BXCAN1->FM1R &= 0xFFFFC000U;  // Identifier Mask mode. (18 MSB are reserved.)
+                BXCAN1->FS1R |= 0x00003FFFU;  // All 32-bit filters. (18 MSB are reserved.)
+
+                BXCAN1->FFA1R =
+                    (BXCAN1->FFA1R & 0xFFFFC000U) | 0x00002AAAU;  // Alternate the filters between FIFO0 & FIFO1.
             }
 
-            BXCAN_ASSERT(((BXCAN1->FMR >> 8U) & 0x3FU) == BXCAN_NUM_ACCEPTANCE_FILTERS);
+            // Configure one "accept all" filter and enable it.
+            BXCAN1->FilterRegister[0].FR1 = 0U;
+            BXCAN1->FilterRegister[0].FR2 = 0U;
+            BXCAN1->FA1R |= (1U << 0);
 
-            BXCAN1->FM1R &= 0xF0000000U;  // Identifier Mask mode. (4 MSB are reserved.)
-            BXCAN1->FS1R |= 0x0FFFFFFFU;  // All 32-bit filters. (4 MSB are reserved.)
-
-            BXCAN1->FFA1R =
-                (BXCAN1->FFA1R & 0xF0000000U) | 0x0AAAAAAAU;  // Alternate the filters between FIFO0 & FIFO1.
+            BXCAN1->FMR &= ~BXCAN_FMR_FINIT;  // Leave initialization mode.
         }
-        else
-        {
-            // MCU with single bxCAN interface has no filter start bank configuration in FMR.
-            // Example MCU: STM32L431.
-            BXCAN1->FMR |= BXCAN_FMR_FINIT;  // Enter filter initialization mode.
-
-            BXCAN1->FM1R &= 0xFFFFC000U;  // Identifier Mask mode. (18 MSB are reserved.)
-            BXCAN1->FS1R |= 0x00003FFFU;  // All 32-bit filters. (18 MSB are reserved.)
-
-            BXCAN1->FFA1R =
-                (BXCAN1->FFA1R & 0xFFFFC000U) | 0x00002AAAU;  // Alternate the filters between FIFO0 & FIFO1.
-        }
-
-        // Configure one "accept all" filter and enable it.
-        BXCAN1->FilterRegister[filter_index].FR1 = 0U;  // Accept all.
-        BXCAN1->FilterRegister[filter_index].FR2 = 0U;  // Accept all.
-        BXCAN1->FA1R |= (1U << filter_index);           // One filter enabled
-
-        bxcan_base->FMR &= ~BXCAN_FMR_FINIT;  // Leave initialization mode.
         out_status = true;
     }
 
@@ -370,18 +374,6 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
     // Only modify the registers if the filter register index offset is valid.
     if (filter_index_offset != 0xFF)
     {
-        // First we disable all filters. This may cause momentary RX frame losses, but the application
-        // should be able to tolerate that. The number of reserved bits is different for devices with
-        // one or two bxCAN interfaces.
-        if (BXCAN_MAX_IFACE_INDEX > 0)
-        {
-            BXCAN1->FA1R &= 0xF0000000U;  // Dual CAN: 28 filter banks, 4 MSB reserved.
-        }
-        else
-        {
-            BXCAN1->FA1R &= 0xFFFFC000U;  // Single CAN: 14 filter banks, 18 MSB reserved.
-        }
-
         // Having filters disabled we can update the configuration.
         // Register mapping: FR1 - ID, FR2 - Mask
         for (uint8_t i = 0U; i < (uint8_t) BXCAN_NUM_ACCEPTANCE_FILTERS; i++)
@@ -423,7 +415,8 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
             uint32_t id   = 0;
             uint32_t mask = 0;
 
-            const BxCANFilterParams* const cfg = params + i;
+            const BxCANFilterParams* const cfg          = params + i;
+            const uint8_t                  filter_index = i + filter_index_offset;
 
             // Convert the filter to the register format.
             // The special case of a filter entry set to {0, 0} (all bits zero) signifies that the filter should block
@@ -440,11 +433,14 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
                     BXCAN_RIR_IDE;  // Must be set to accept extended-ID frames. (The mask bit for IDE is already zero.)
 
                 // Applying the converted representation to the registers.
-                const uint8_t filter_index               = i + filter_index_offset;
                 BXCAN1->FilterRegister[filter_index].FR1 = id;
                 BXCAN1->FilterRegister[filter_index].FR2 = mask;
 
                 BXCAN1->FA1R |= (1U << filter_index);  // Enable the filter.
+            }
+            else
+            {
+                BXCAN1->FA1R &= ~(1U << filter_index);
             }
         }
     }

@@ -87,7 +87,7 @@ typedef struct
 /// Use bxCANConfigureFilters() to override this after the interface is configured.
 ///
 /// WARNING: The clock of the CAN module must be enabled before this function is invoked!
-///          If CAN2 is used, CAN1 must be also enabled!
+///          If CAN2 is used, CAN1 must be initialized first (at least in silent mode)!
 ///
 /// WARNING: The driver is not thread-safe!
 ///          It does not use IRQ or critical sections though, so it is safe to invoke its API functions from the
@@ -96,7 +96,7 @@ bool bxCANConfigure(const uint8_t iface_index, const BxCANTimings timings, const
 
 /// Acceptance filter configuration. Unused filters shall be set to {0, 0} (all bits zero); they will reject all frames.
 /// When the interface is reinitialized, hardware acceptance filters are reset, so this function shall be re-invoked.
-/// While reconfiguration is in progress, some received frames may be lost.
+/// While reconfiguration is in progress, some received frames may be lost, and/or undesired frames may be received.
 /// Filters alternate between FIFO0/1 in order to equalize the load: even filters take FIFO0, odd filters take FIFO1.
 /// This will cause occasional priority inversion and frame reordering on reception, but that is acceptable for UAVCAN,
 /// and most other CAN-based protocols will tolerate this too since there will be no reordering within the same CAN ID.
