@@ -372,6 +372,7 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
     // Only modify the registers if the filter register index offset is valid.
     if (filter_index_offset != 0xFF)
     {
+        BXCAN1->FMR |= BXCAN_FMR_FINIT;  // This is required for disabling filters.
         // Having filters disabled we can update the configuration.
         // Register mapping: FR1 - ID, FR2 - Mask
         for (uint8_t i = 0U; i < (uint8_t) BXCAN_NUM_ACCEPTANCE_FILTERS; i++)
@@ -441,6 +442,7 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
                 BXCAN1->FA1R &= ~(1U << filter_index);
             }
         }
+        BXCAN1->FMR &= ~BXCAN_FMR_FINIT;
     }
 }
 
