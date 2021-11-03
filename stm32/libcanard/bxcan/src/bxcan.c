@@ -338,7 +338,7 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
             // Configure one "accept all" filter and enable it.
             BXCAN1->FilterRegister[0].FR1 = 0U;
             BXCAN1->FilterRegister[0].FR2 = 0U;
-            BXCAN1->FA1R |= (1U << 0);
+            BXCAN1->FA1R |= (1U << 0U);
 
             BXCAN1->FMR &= ~BXCAN_FMR_FINIT;  // Leave initialization mode.
         }
