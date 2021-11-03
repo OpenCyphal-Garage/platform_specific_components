@@ -103,8 +103,7 @@ static bool waitMSRINAKBitStateChange(volatile const BxCANType* const bxcan_base
         // The counter variable is declared volatile to prevent the compiler from optimizing it away.
         volatile size_t nticks = BXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK / 7000U;
         while (--nticks)
-        {
-        }
+        {}
     }
 
     return out_status;
@@ -171,7 +170,7 @@ static void processErrorStatus(volatile BxCANType* const bxcan_base,  //
     BXCAN_ASSERT((error_iface == &g_error[0]) || (error_iface == &g_error[1]));  // Valid g_error address.
 
     // Updating error flag.
-    const uint8_t lec = (uint8_t)((bxcan_base->ESR & BXCAN_ESR_LEC_MASK) >> BXCAN_ESR_LEC_SHIFT);
+    const uint8_t lec = (uint8_t) ((bxcan_base->ESR & BXCAN_ESR_LEC_MASK) >> BXCAN_ESR_LEC_SHIFT);
 
     if (lec != 0U)
     {
@@ -204,16 +203,16 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
 
     // Select the appropriate CAN interface base address and zero the error flags for it.
     // If the interface number is invalid, return with an error.
-    volatile BxCANType* bxcan_base   = NULL;  // Selected CAN interface base address.
+    volatile BxCANType* bxcan_base = NULL;  // Selected CAN interface base address.
     if (iface_index == 0U)
     {
-        bxcan_base   = BXCAN1;
-        g_error[0]   = false;
+        bxcan_base = BXCAN1;
+        g_error[0] = false;
     }
     else if ((iface_index == 1U) && (BXCAN_MAX_IFACE_INDEX == 1U))
     {
-        bxcan_base   = BXCAN2;
-        g_error[1]   = false;
+        bxcan_base = BXCAN2;
+        g_error[1] = false;
     }
     else
     {
@@ -362,7 +361,7 @@ void bxCANConfigureFilters(const uint8_t           iface_index,  //
     }
     else if ((iface_index == 1U) && (BXCAN_MAX_IFACE_INDEX == 1U))
     {
-        filter_index_offset = (uint8_t)(BXCAN_NUM_ACCEPTANCE_FILTERS);
+        filter_index_offset = (uint8_t) (BXCAN_NUM_ACCEPTANCE_FILTERS);
     }
     else
     {
@@ -694,21 +693,21 @@ bool bxCANPop(const uint8_t   iface_index,          //
 
                 *out_extended_can_id = convertRegisterToFrameID(mb->RIR);
 
-                *out_payload_size = (uint8_t)(mb->RDTR & BXCAN_RDTR_DLC_MASK);
+                *out_payload_size = (uint8_t) (mb->RDTR & BXCAN_RDTR_DLC_MASK);
 
                 // Caching to regular (non volatile) memory for faster reads
                 const uint32_t rdlr = mb->RDLR;
                 const uint32_t rdhr = mb->RDHR;
 
                 uint8_t* out_ptr = (uint8_t*) out_payload;
-                *out_ptr++       = (uint8_t)(0xFFU & (rdlr >> 0U));
-                *out_ptr++       = (uint8_t)(0xFFU & (rdlr >> 8U));
-                *out_ptr++       = (uint8_t)(0xFFU & (rdlr >> 16U));
-                *out_ptr++       = (uint8_t)(0xFFU & (rdlr >> 24U));
-                *out_ptr++       = (uint8_t)(0xFFU & (rdhr >> 0U));
-                *out_ptr++       = (uint8_t)(0xFFU & (rdhr >> 8U));
-                *out_ptr++       = (uint8_t)(0xFFU & (rdhr >> 16U));
-                *out_ptr++       = (uint8_t)(0xFFU & (rdhr >> 24U));
+                *out_ptr++       = (uint8_t) (0xFFU & (rdlr >> 0U));
+                *out_ptr++       = (uint8_t) (0xFFU & (rdlr >> 8U));
+                *out_ptr++       = (uint8_t) (0xFFU & (rdlr >> 16U));
+                *out_ptr++       = (uint8_t) (0xFFU & (rdlr >> 24U));
+                *out_ptr++       = (uint8_t) (0xFFU & (rdhr >> 0U));
+                *out_ptr++       = (uint8_t) (0xFFU & (rdhr >> 8U));
+                *out_ptr++       = (uint8_t) (0xFFU & (rdhr >> 16U));
+                *out_ptr++       = (uint8_t) (0xFFU & (rdhr >> 24U));
 
                 // Release FIFO entry we just read
                 *RFxR[i] |= BXCAN_RFR_RFOM | BXCAN_RFR_FOVR | BXCAN_RFR_FULL;
@@ -758,7 +757,7 @@ bool bxCANComputeTimings(const uint32_t      peripheral_clock_rate,  //
     //   500  kbps      16      17
     //   250  kbps      16      17
     //   125  kbps      16      17
-    const uint8_t max_quanta_per_bit = (uint8_t)((target_bitrate >= 1000000) ? 10U : 17U);
+    const uint8_t max_quanta_per_bit = (uint8_t) ((target_bitrate >= 1000000) ? 10U : 17U);
     BXCAN_ASSERT(max_quanta_per_bit <= (MaxBS1 + MaxBS2));
 
     static const uint16_t MaxSamplePointLocationPermill = 900U;
@@ -774,7 +773,7 @@ bool bxCANComputeTimings(const uint32_t      peripheral_clock_rate,  //
     const uint32_t prescaler_bs = peripheral_clock_rate / target_bitrate;
 
     // Searching for such prescaler value so that the number of quanta per bit is highest.
-    uint8_t bs1_bs2_sum = (uint8_t)(max_quanta_per_bit - 1U);
+    uint8_t bs1_bs2_sum = (uint8_t) (max_quanta_per_bit - 1U);
 
     while ((prescaler_bs % (1U + bs1_bs2_sum)) != 0U)
     {
@@ -808,17 +807,17 @@ bool bxCANComputeTimings(const uint32_t      peripheral_clock_rate,  //
     // Since the optimal solution is so close to the maximum, we prepare two solutions, and then pick the best one:
     //   - With rounding to nearest
     //   - With rounding to zero
-    uint8_t bs1 = (uint8_t)(((7U * bs1_bs2_sum - 1U) + 4U) / 8U);  // Trying rounding to nearest first
-    uint8_t bs2 = (uint8_t)(bs1_bs2_sum - bs1);
+    uint8_t bs1 = (uint8_t) (((7U * bs1_bs2_sum - 1U) + 4U) / 8U);  // Trying rounding to nearest first
+    uint8_t bs2 = (uint8_t) (bs1_bs2_sum - bs1);
     BXCAN_ASSERT(bs1_bs2_sum > bs1);
 
     {
-        const uint16_t sample_point_permill = (uint16_t)(1000U * (1U + bs1) / (1U + bs1 + bs2));
+        const uint16_t sample_point_permill = (uint16_t) (1000U * (1U + bs1) / (1U + bs1 + bs2));
 
         if (sample_point_permill > MaxSamplePointLocationPermill)  // Strictly more!
         {
-            bs1 = (uint8_t)((7U * bs1_bs2_sum - 1U) / 8U);  // Nope, too far; now rounding to zero
-            bs2 = (uint8_t)(bs1_bs2_sum - bs1);
+            bs1 = (uint8_t) ((7U * bs1_bs2_sum - 1U) / 8U);  // Nope, too far; now rounding to zero
+            bs2 = (uint8_t) (bs1_bs2_sum - bs1);
         }
     }
 
