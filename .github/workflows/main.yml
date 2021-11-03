@@ -23,6 +23,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo dpkg --add-architecture i386
+          sudo apt update
           sudo apt install gcc-10 g++-10 linux-libc-dev:i386 linux-*-extra-$(uname -r)
 
       - name: Configure CMake
@@ -41,12 +42,7 @@ jobs:
 
   # stm32/libcanard/bxcan
   stm32:
-    env:
-      CC: gcc-10
-      CXX: g++-10
-
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
         with:
@@ -54,16 +50,17 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt install gcc-10 g++-10 gcc-10-multilib g++-10-multilib clang-tidy-10 clang-format-10
-          wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 10
+          sudo apt update
+          wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 12
+          sudo apt install clang-tidy-12 clang-format-12
 
       - name: Static analysis
         working-directory: ${{github.workspace}}/stm32/libcanard/bxcan/
-        run: clang-tidy-10 src/*.c --extra-arg='-DBXCAN_MAX_IFACE_INDEX=1' --extra-arg='-DBXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK=72000000'
+        run: clang-tidy-12 src/*.c --extra-arg='-DBXCAN_MAX_IFACE_INDEX=1' --extra-arg='-DBXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK=72000000'
 
       - name: Format check
         working-directory: ${{github.workspace}}/stm32/libcanard/bxcan/
         run: |
-          clang-format-10 -i -fallback-style=none -style=file --verbose src/*.[ch]
+          clang-format-12 -i -fallback-style=none -style=file --verbose src/*.[ch]
           modified="$(git status --porcelain --untracked-files=no)"
           if [ -n "$modified" ]; then echo "Please format code properly."; exit 1; fi

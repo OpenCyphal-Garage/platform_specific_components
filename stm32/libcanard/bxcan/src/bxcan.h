@@ -87,7 +87,7 @@ typedef struct
 /// Use bxCANConfigureFilters() to override this after the interface is configured.
 ///
 /// WARNING: The clock of the CAN module must be enabled before this function is invoked!
-///          If CAN2 is used, CAN1 must be also enabled!
+///          If CAN2 is used, CAN1 must be initialized first (at least in silent mode)!
 ///
 /// WARNING: The driver is not thread-safe!
 ///          It does not use IRQ or critical sections though, so it is safe to invoke its API functions from the
@@ -96,7 +96,7 @@ bool bxCANConfigure(const uint8_t iface_index, const BxCANTimings timings, const
 
 /// Acceptance filter configuration. Unused filters shall be set to {0, 0} (all bits zero); they will reject all frames.
 /// When the interface is reinitialized, hardware acceptance filters are reset, so this function shall be re-invoked.
-/// While reconfiguration is in progress, some received frames may be lost.
+/// While reconfiguration is in progress, some received frames may be lost, and/or undesired frames may be received.
 /// Filters alternate between FIFO0/1 in order to equalize the load: even filters take FIFO0, odd filters take FIFO1.
 /// This will cause occasional priority inversion and frame reordering on reception, but that is acceptable for UAVCAN,
 /// and most other CAN-based protocols will tolerate this too since there will be no reordering within the same CAN ID.
@@ -158,6 +158,11 @@ bool bxCANPush(const uint8_t     iface_index,
 
 /// Extract one frame from the RX FIFOs. FIFO0 checked first.
 /// The out_payload memory shall be large enough to accommodate the largest CAN frame payload.
+///
+/// Special case: if the top entry of a FIFO contains a non-extended-data frame (e.g., RTR/11-bit), said entry
+/// will be silently discarded and the function may return false even if there are relevant items
+/// further down the queue. To avoid such complications, be sure to always use acceptance filters.
+///
 /// Returns true if received; false if both RX FIFOs are empty.
 bool bxCANPop(const uint8_t   iface_index,
               uint32_t* const out_extended_can_id,
