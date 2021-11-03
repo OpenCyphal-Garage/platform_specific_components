@@ -24,6 +24,7 @@ jobs:
         run: |
           sudo apt update
           sudo dpkg --add-architecture i386
+          sudo apt update
           sudo apt install gcc-10 g++-10 linux-libc-dev:i386 linux-*-extra-$(uname -r)
 
       - name: Configure CMake
