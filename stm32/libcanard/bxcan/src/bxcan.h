@@ -158,6 +158,11 @@ bool bxCANPush(const uint8_t     iface_index,
 
 /// Extract one frame from the RX FIFOs. FIFO0 checked first.
 /// The out_payload memory shall be large enough to accommodate the largest CAN frame payload.
+///
+/// Special case: if the top entry of a FIFO contains a non-extended-data frame (e.g., RTR/11-bit), said entry
+/// will be silently discarded and the function may return false even if there are relevant items
+/// further down the queue. To avoid such complications, be sure to always use acceptance filters.
+///
 /// Returns true if received; false if both RX FIFOs are empty.
 bool bxCANPop(const uint8_t   iface_index,
               uint32_t* const out_extended_can_id,
