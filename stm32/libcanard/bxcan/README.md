@@ -10,6 +10,8 @@ So far this driver has been tested at least with the following MCU:
 
 * STM32L431
 * STM32F446
+* STM32F103C8T6 (using CAN IRQ handler for receiving frames)
+* STM32F303RET6 (using CAN IRQ handler for receiving frames)
 * Please extend this list if you used it with other MCU.
 
 ## Features
