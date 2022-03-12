@@ -64,12 +64,13 @@ int16_t socketcanPush(const SocketCANFD fd, const CanardFrame* const frame, cons
 /// The function will block until a frame is received or until the timeout is expired. It may return early.
 /// Zero timeout makes the operation non-blocking.
 /// Returns 1 on success, 0 on timeout, negated errno on error.
-int16_t socketcanPop(const SocketCANFD       fd,
-                     CanardFrame* const      out_frame,
-                     const size_t            payload_buffer_size,
-                     void* const             payload_buffer,
-                     const CanardMicrosecond timeout_usec,
-                     bool* const             loopback);
+int16_t socketcanPop(const SocketCANFD        fd,
+                     CanardFrame* const       out_frame,
+                     CanardMicrosecond* const out_timestamp_usec,
+                     const size_t             payload_buffer_size,
+                     void* const              payload_buffer,
+                     const CanardMicrosecond  timeout_usec,
+                     bool * const loopback);
 
 /// The configuration of a single extended 29-bit data frame acceptance filter.
 /// Bits above the 29-th shall be cleared.

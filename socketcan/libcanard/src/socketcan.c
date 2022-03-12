@@ -164,12 +164,13 @@ int16_t socketcanPush(const SocketCANFD fd, const CanardFrame* const frame, cons
     return poll_result;
 }
 
-int16_t socketcanPop(const SocketCANFD       fd,
-                     CanardFrame* const      out_frame,
-                     const size_t            payload_buffer_size,
-                     void* const             payload_buffer,
-                     const CanardMicrosecond timeout_usec,
-                     bool* const             loopback)
+int16_t socketcanPop(const SocketCANFD        fd,
+                     CanardFrame* const       out_frame,
+                     CanardMicrosecond* const out_timestamp_usec,
+                     const size_t             payload_buffer_size,
+                     void* const              payload_buffer,
+                     const CanardMicrosecond  timeout_usec,
+                     bool * const loopback)
 {
     if ((out_frame == NULL) || (payload_buffer == NULL))
     {
@@ -244,22 +245,24 @@ int16_t socketcanPop(const SocketCANFD       fd,
 
         // Obtain the CAN frame time stamp from the kernel.
         // This time stamp is from the CLOCK_REALTIME kernel source.
-        const struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
-        struct timeval        tv   = {0};
-        assert(cmsg != NULL);
-        if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SO_TIMESTAMP)
-        {
-            (void) memcpy(&tv, CMSG_DATA(cmsg), sizeof(tv));  // Copy to avoid alignment problems
-            assert(tv.tv_sec >= 0 && tv.tv_usec >= 0);
+        if(out_timestamp_usec){
+            const struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+            struct timeval        tv   = {0};
+            assert(cmsg != NULL);
+            if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SO_TIMESTAMP)
+            {
+                (void) memcpy(&tv, CMSG_DATA(cmsg), sizeof(tv));  // Copy to avoid alignment problems
+                assert(tv.tv_sec >= 0 && tv.tv_usec >= 0);
+            }
+            else
+            {
+                assert(0);
+                return -EIO;
+            }
+    
+            (void) memset(out_frame, 0, sizeof(CanardFrame));
+            *out_timestamp_usec  = (CanardMicrosecond)(((uint64_t) tv.tv_sec * MEGA) + (uint64_t) tv.tv_usec);
         }
-        else
-        {
-            assert(0);
-            return -EIO;
-        }
-
-        (void) memset(out_frame, 0, sizeof(CanardFrame));
-        out_frame->timestamp_usec  = (CanardMicrosecond)(((uint64_t) tv.tv_sec * MEGA) + (uint64_t) tv.tv_usec);
         out_frame->extended_can_id = sockcan_frame.can_id & CAN_EFF_MASK;
         out_frame->payload_size    = sockcan_frame.len;
         out_frame->payload         = payload_buffer;
