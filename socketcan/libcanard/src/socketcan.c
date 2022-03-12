@@ -170,7 +170,7 @@ int16_t socketcanPop(const SocketCANFD        fd,
                      const size_t             payload_buffer_size,
                      void* const              payload_buffer,
                      const CanardMicrosecond  timeout_usec,
-                     bool * const loopback)
+                     bool* const              loopback)
 {
     if ((out_frame == NULL) || (payload_buffer == NULL))
     {
@@ -186,8 +186,8 @@ int16_t socketcanPop(const SocketCANFD        fd,
         struct canfd_frame sockcan_frame = {0};  // CAN FD frame storage.
         struct iovec       iov           = {
             // Scatter/gather array items struct.
-            .iov_base = &sockcan_frame,        // Starting address.
-            .iov_len  = sizeof(sockcan_frame)  // Number of bytes to transfer.
+                            .iov_base = &sockcan_frame,        // Starting address.
+                            .iov_len  = sizeof(sockcan_frame)  // Number of bytes to transfer.
 
         };
 
@@ -245,11 +245,12 @@ int16_t socketcanPop(const SocketCANFD        fd,
 
         // Obtain the CAN frame time stamp from the kernel.
         // This time stamp is from the CLOCK_REALTIME kernel source.
-        if(out_timestamp_usec){
+        if (NULL != out_timestamp_usec)
+        {
             const struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
             struct timeval        tv   = {0};
             assert(cmsg != NULL);
-            if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SO_TIMESTAMP)
+            if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SO_TIMESTAMP))
             {
                 (void) memcpy(&tv, CMSG_DATA(cmsg), sizeof(tv));  // Copy to avoid alignment problems
                 assert(tv.tv_sec >= 0 && tv.tv_usec >= 0);
@@ -259,9 +260,9 @@ int16_t socketcanPop(const SocketCANFD        fd,
                 assert(0);
                 return -EIO;
             }
-    
+
             (void) memset(out_frame, 0, sizeof(CanardFrame));
-            *out_timestamp_usec  = (CanardMicrosecond)(((uint64_t) tv.tv_sec * MEGA) + (uint64_t) tv.tv_usec);
+            *out_timestamp_usec = (CanardMicrosecond) (((uint64_t) tv.tv_sec * MEGA) + (uint64_t) tv.tv_usec);
         }
         out_frame->extended_can_id = sockcan_frame.can_id & CAN_EFF_MASK;
         out_frame->payload_size    = sockcan_frame.len;
@@ -290,7 +291,7 @@ int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const So
     }
 
     const int ret =
-        setsockopt(fd, SOL_CAN_RAW, CAN_RAW_FILTER, cfs, (socklen_t)(sizeof(struct can_filter) * num_configs));
+        setsockopt(fd, SOL_CAN_RAW, CAN_RAW_FILTER, cfs, (socklen_t) (sizeof(struct can_filter) * num_configs));
 
     return (ret < 0) ? getNegatedErrno() : 0;
 }

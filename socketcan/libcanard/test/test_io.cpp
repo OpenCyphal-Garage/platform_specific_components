@@ -16,8 +16,8 @@ TEST_CASE("IO-Classic")  // Catch2 does not support parametrized tests yet.
     REQUIRE(sa >= 0);
     REQUIRE(sb >= 0);
 
-    CanardFrame fr{};
-    CanardMicrosecond timestamp_usec;
+    CanardFrame       fr{};
+    CanardMicrosecond timestamp_usec{};
     fr.extended_can_id = 0x1234U;
     fr.payload_size    = 6;
     fr.payload         = "Hello";
@@ -74,8 +74,8 @@ TEST_CASE("IO-FD")
     REQUIRE(-EFBIG == socketcanFilter(sa, 1'000'000, &fcs));
     REQUIRE(-EINVAL == socketcanFilter(sa, 1, NULL));
 
-    CanardFrame fr{};
-    CanardMicrosecond timestamp_usec;
+    CanardFrame       fr{};
+    CanardMicrosecond timestamp_usec{};
     fr.extended_can_id = 0x1234U;
     fr.payload_size    = 13;
     fr.payload         = "Hello world!";
@@ -124,8 +124,8 @@ TEST_CASE("IO-FD-Loopback")
     REQUIRE(sa >= 0);
     REQUIRE(sb >= 0);
 
-    CanardFrame fr{};
-    CanardMicrosecond timestamp_usec;
+    CanardFrame       fr{};
+    CanardMicrosecond timestamp_usec{};
     fr.extended_can_id = 0x1234U;
     fr.payload_size    = 13;
     fr.payload         = "Hello World!";
@@ -134,7 +134,8 @@ TEST_CASE("IO-FD-Loopback")
     bool loopback = true;
     char buf[255]{};
     fr = {};
-    REQUIRE(1 == socketcanPop(sb, &fr, &timestamp_usec, sizeof(buf), buf, 1000, &loopback));  // Receive actual frame on sb.
+    REQUIRE(1 ==
+            socketcanPop(sb, &fr, &timestamp_usec, sizeof(buf), buf, 1000, &loopback));  // Receive actual frame on sb.
     REQUIRE(loopback == false);
     REQUIRE(timestamp_usec > 0);
     REQUIRE(fr.extended_can_id == 0x1234U);
@@ -143,7 +144,9 @@ TEST_CASE("IO-FD-Loopback")
     auto old_ts = timestamp_usec;
 
     fr = {};
-    REQUIRE(1 == socketcanPop(sa, &fr, &timestamp_usec, sizeof(buf), buf, 1000, &loopback));  // Receive loopback frame on sa.
+    REQUIRE(
+        1 ==
+        socketcanPop(sa, &fr, &timestamp_usec, sizeof(buf), buf, 1000, &loopback));  // Receive loopback frame on sa.
     REQUIRE(loopback == true);
     REQUIRE(timestamp_usec > 0);
     REQUIRE(timestamp_usec >= old_ts);

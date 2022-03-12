@@ -70,7 +70,7 @@ int16_t socketcanPop(const SocketCANFD        fd,
                      const size_t             payload_buffer_size,
                      void* const              payload_buffer,
                      const CanardMicrosecond  timeout_usec,
-                     bool * const loopback);
+                     bool* const              loopback);
 
 /// The configuration of a single extended 29-bit data frame acceptance filter.
 /// Bits above the 29-th shall be cleared.
