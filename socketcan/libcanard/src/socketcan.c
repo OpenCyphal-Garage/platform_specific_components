@@ -1,5 +1,5 @@
 /// This software is distributed under the terms of the MIT License.
-/// Copyright (c) 2020 UAVCAN Development Team.
+/// Copyright (c) 2020 OpenCyphal
 /// Authors: Pavel Kirienko <pavel.kirienko@zubax.com>, Tom De Rybel <tom.derybel@robocow.be>
 
 // This is needed to enable the necessary declarations in sys/
@@ -164,12 +164,13 @@ int16_t socketcanPush(const SocketCANFD fd, const CanardFrame* const frame, cons
     return poll_result;
 }
 
-int16_t socketcanPop(const SocketCANFD       fd,
-                     CanardFrame* const      out_frame,
-                     const size_t            payload_buffer_size,
-                     void* const             payload_buffer,
-                     const CanardMicrosecond timeout_usec,
-                     bool* const             loopback)
+int16_t socketcanPop(const SocketCANFD        fd,
+                     CanardFrame* const       out_frame,
+                     CanardMicrosecond* const out_timestamp_usec,
+                     const size_t             payload_buffer_size,
+                     void* const              payload_buffer,
+                     const CanardMicrosecond  timeout_usec,
+                     bool* const              loopback)
 {
     if ((out_frame == NULL) || (payload_buffer == NULL))
     {
@@ -185,8 +186,8 @@ int16_t socketcanPop(const SocketCANFD       fd,
         struct canfd_frame sockcan_frame = {0};  // CAN FD frame storage.
         struct iovec       iov           = {
             // Scatter/gather array items struct.
-            .iov_base = &sockcan_frame,        // Starting address.
-            .iov_len  = sizeof(sockcan_frame)  // Number of bytes to transfer.
+                            .iov_base = &sockcan_frame,        // Starting address.
+                            .iov_len  = sizeof(sockcan_frame)  // Number of bytes to transfer.
 
         };
 
@@ -244,22 +245,25 @@ int16_t socketcanPop(const SocketCANFD       fd,
 
         // Obtain the CAN frame time stamp from the kernel.
         // This time stamp is from the CLOCK_REALTIME kernel source.
-        const struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
-        struct timeval        tv   = {0};
-        assert(cmsg != NULL);
-        if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SO_TIMESTAMP)
+        if (NULL != out_timestamp_usec)
         {
-            (void) memcpy(&tv, CMSG_DATA(cmsg), sizeof(tv));  // Copy to avoid alignment problems
-            assert(tv.tv_sec >= 0 && tv.tv_usec >= 0);
-        }
-        else
-        {
-            assert(0);
-            return -EIO;
-        }
+            const struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+            struct timeval        tv   = {0};
+            assert(cmsg != NULL);
+            if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SO_TIMESTAMP))
+            {
+                (void) memcpy(&tv, CMSG_DATA(cmsg), sizeof(tv));  // Copy to avoid alignment problems
+                assert(tv.tv_sec >= 0 && tv.tv_usec >= 0);
+            }
+            else
+            {
+                assert(0);
+                return -EIO;
+            }
 
-        (void) memset(out_frame, 0, sizeof(CanardFrame));
-        out_frame->timestamp_usec  = (CanardMicrosecond)(((uint64_t) tv.tv_sec * MEGA) + (uint64_t) tv.tv_usec);
+            (void) memset(out_frame, 0, sizeof(CanardFrame));
+            *out_timestamp_usec = (CanardMicrosecond) (((uint64_t) tv.tv_sec * MEGA) + (uint64_t) tv.tv_usec);
+        }
         out_frame->extended_can_id = sockcan_frame.can_id & CAN_EFF_MASK;
         out_frame->payload_size    = sockcan_frame.len;
         out_frame->payload         = payload_buffer;
@@ -268,7 +272,7 @@ int16_t socketcanPop(const SocketCANFD       fd,
     return poll_result;
 }
 
-int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const SocketCANFilterConfig* const configs)
+int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const CanardFilter* const configs)
 {
     if (configs == NULL)
     {
@@ -282,12 +286,12 @@ int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const So
     struct can_filter cfs[CAN_RAW_FILTER_MAX];
     for (size_t i = 0; i < num_configs; i++)
     {
-        cfs[i].can_id   = (configs[i].extended_id & CAN_EFF_MASK) | CAN_EFF_FLAG;
-        cfs[i].can_mask = (configs[i].mask & CAN_EFF_MASK) | CAN_EFF_FLAG | CAN_RTR_FLAG;
+        cfs[i].can_id   = (configs[i].extended_can_id & CAN_EFF_MASK) | CAN_EFF_FLAG;
+        cfs[i].can_mask = (configs[i].extended_mask & CAN_EFF_MASK) | CAN_EFF_FLAG | CAN_RTR_FLAG;
     }
 
     const int ret =
-        setsockopt(fd, SOL_CAN_RAW, CAN_RAW_FILTER, cfs, (socklen_t)(sizeof(struct can_filter) * num_configs));
+        setsockopt(fd, SOL_CAN_RAW, CAN_RAW_FILTER, cfs, (socklen_t) (sizeof(struct can_filter) * num_configs));
 
     return (ret < 0) ? getNegatedErrno() : 0;
 }
