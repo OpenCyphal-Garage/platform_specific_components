@@ -1,5 +1,5 @@
 /// This software is distributed under the terms of the MIT License.
-/// Copyright (c) 2020 UAVCAN Development Team.
+/// Copyright (c) 2020 OpenCyphal
 /// Authors: Pavel Kirienko <pavel.kirienko@zubax.com>, Tom De Rybel <tom.derybel@robocow.be>
 
 // This is needed to enable the necessary declarations in sys/
@@ -272,7 +272,7 @@ int16_t socketcanPop(const SocketCANFD        fd,
     return poll_result;
 }
 
-int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const SocketCANFilterConfig* const configs)
+int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const CanardFilter* const configs)
 {
     if (configs == NULL)
     {
@@ -286,8 +286,8 @@ int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const So
     struct can_filter cfs[CAN_RAW_FILTER_MAX];
     for (size_t i = 0; i < num_configs; i++)
     {
-        cfs[i].can_id   = (configs[i].extended_id & CAN_EFF_MASK) | CAN_EFF_FLAG;
-        cfs[i].can_mask = (configs[i].mask & CAN_EFF_MASK) | CAN_EFF_FLAG | CAN_RTR_FLAG;
+        cfs[i].can_id   = (configs[i].extended_can_id & CAN_EFF_MASK) | CAN_EFF_FLAG;
+        cfs[i].can_mask = (configs[i].extended_mask & CAN_EFF_MASK) | CAN_EFF_FLAG | CAN_RTR_FLAG;
     }
 
     const int ret =

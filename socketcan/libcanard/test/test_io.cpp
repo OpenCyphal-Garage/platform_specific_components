@@ -1,5 +1,5 @@
 /// This software is distributed under the terms of the MIT License.
-/// Copyright (c) 2020 UAVCAN Development Team.
+/// Copyright (c) 2020 OpenCyphal
 /// Author: Pavel Kirienko <pavel.kirienko@zubax.com>
 
 #include "socketcan.h"
@@ -66,7 +66,7 @@ TEST_CASE("IO-FD")
     REQUIRE(sa >= 0);
     REQUIRE(sb >= 0);
 
-    const SocketCANFilterConfig fcs = {
+    const CanardFilter fcs = {
         0x00001234U,
         0x1FFFFFFFU,
     };

@@ -1,10 +1,9 @@
-///                         __   __   _______   __   __   _______   _______   __   __
-///                        |  | |  | /   _   ` |  | |  | /   ____| /   _   ` |  ` |  |
-///                        |  | |  | |  |_|  | |  | |  | |  |      |  |_|  | |   `|  |
-///                        |  |_|  | |   _   | `  `_/  / |  |____  |   _   | |  |`   |
-///                        `_______/ |__| |__|  `_____/  `_______| |__| |__| |__| `__|
-///                            |      |            |         |      |         |
-///                        ----o------o------------o---------o------o---------o-------
+///                            ____                   ______            __          __
+///                           / __ `____  ___  ____  / ____/_  ______  / /_  ____  / /
+///                          / / / / __ `/ _ `/ __ `/ /   / / / / __ `/ __ `/ __ `/ /
+///                         / /_/ / /_/ /  __/ / / / /___/ /_/ / /_/ / / / / /_/ / /
+///                         `____/ .___/`___/_/ /_/`____/`__, / .___/_/ /_/`__,_/_/
+///                             /_/                     /____/_/
 ///
 /// This is a basic adapter library that bridges Libcanard with SocketCAN.
 /// Read the API documentation for usage information.
@@ -13,6 +12,8 @@
 ///
 /// --------------------------------------------------------------------------------------------------------------------
 /// Changelog
+///
+/// v3.0 - Update for compatibility with Libcanard v3.
 ///
 /// v2.0 - Added loop-back functionality.
 ///        API change in socketcanPop(): loopback flag added.
@@ -23,7 +24,7 @@
 /// --------------------------------------------------------------------------------------------------------------------
 ///
 /// This software is distributed under the terms of the MIT License.
-/// Copyright (c) 2020 UAVCAN Development Team.
+/// Copyright (c) 2020 OpenCyphal
 /// Author: Pavel Kirienko <pavel.kirienko@zubax.com>
 
 #ifndef SOCKETCAN_H_INCLUDED
@@ -72,19 +73,11 @@ int16_t socketcanPop(const SocketCANFD        fd,
                      const CanardMicrosecond  timeout_usec,
                      bool* const              loopback);
 
-/// The configuration of a single extended 29-bit data frame acceptance filter.
-/// Bits above the 29-th shall be cleared.
-typedef struct SocketCANFilterConfig
-{
-    uint32_t extended_id;
-    uint32_t mask;
-} SocketCANFilterConfig;
-
 /// Apply the specified acceptance filter configuration.
 /// Note that it is only possible to accept extended-format data frames.
 /// The default configuration is to accept everything.
 /// Returns 0 on success, negated errno on error.
-int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const SocketCANFilterConfig* const configs);
+int16_t socketcanFilter(const SocketCANFD fd, const size_t num_configs, const CanardFilter* const configs);
 
 #ifdef __cplusplus
 }
