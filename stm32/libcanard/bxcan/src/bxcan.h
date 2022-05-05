@@ -1,10 +1,9 @@
-///                         __   __   _______   __   __   _______   _______   __   __
-///                        |  | |  | /   _   ` |  | |  | /   ____| /   _   ` |  ` |  |
-///                        |  | |  | |  |_|  | |  | |  | |  |      |  |_|  | |   `|  |
-///                        |  |_|  | |   _   | `  `_/  / |  |____  |   _   | |  |`   |
-///                        `_______/ |__| |__|  `_____/  `_______| |__| |__| |__| `__|
-///                            |      |            |         |      |         |
-///                        ----o------o------------o---------o------o---------o-------
+///                            ____                   ______            __          __
+///                           / __ `____  ___  ____  / ____/_  ______  / /_  ____  / /
+///                          / / / / __ `/ _ `/ __ `/ /   / / / / __ `/ __ `/ __ `/ /
+///                         / /_/ / /_/ /  __/ / / / /___/ /_/ / /_/ / / / / /_/ / /
+///                         `____/ .___/`___/_/ /_/`____/`__, / .___/_/ /_/`__,_/_/
+///                             /_/                     /____/_/
 ///
 /// A generic low-level driver for the STM32 bxCAN macrocell. Designed to support any operating system and baremetal
 /// systems. This driver is not compatible with FDCAN controllers available in newer STM32 MCUs such as STM32H7.
@@ -27,7 +26,7 @@
 /// If interrupts are used, it is the responsibility of the caller to ensure adequate synchronization.
 ///
 /// The driver automatically aborts all pending transmissions if the CAN controller enters the bus-off state.
-/// This behavior is introduced to support the plug-and-play node-ID allocation protocol defined by UAVCAN.
+/// This behavior is introduced to support the plug-and-play node-ID allocation protocol defined by Cyphal.
 ///
 /// The driver does not support TX timestamping. This feature is only required for time synchronization masters.
 /// The suggested alternative is to implement the required logic at the driver layer directly, as is often done
@@ -42,7 +41,7 @@
 /// The recommended approach for integration is to copy-paste the source files into the project tree and modify
 /// as necessary. The .c file does not require any specific build options.
 ///
-/// This software is distributed under the terms of the MIT License. Copyright (c) 2020 UAVCAN Development Team.
+/// This software is distributed under the terms of the MIT License. Copyright (c) 2020 OpenCyphal
 
 #pragma once
 
@@ -98,7 +97,7 @@ bool bxCANConfigure(const uint8_t iface_index, const BxCANTimings timings, const
 /// When the interface is reinitialized, hardware acceptance filters are reset, so this function shall be re-invoked.
 /// While reconfiguration is in progress, some received frames may be lost, and/or undesired frames may be received.
 /// Filters alternate between FIFO0/1 in order to equalize the load: even filters take FIFO0, odd filters take FIFO1.
-/// This will cause occasional priority inversion and frame reordering on reception, but that is acceptable for UAVCAN,
+/// This will cause occasional priority inversion and frame reordering on reception, but that is acceptable for Cyphal,
 /// and most other CAN-based protocols will tolerate this too since there will be no reordering within the same CAN ID.
 void bxCANConfigureFilters(const uint8_t iface_index, const BxCANFilterParams params[BXCAN_NUM_ACCEPTANCE_FILTERS]);
 
@@ -122,7 +121,7 @@ bool bxCANReapError(const uint8_t iface_index);
 ///     - If all mailboxes are free, the frame is accepted.
 ///     - If all mailboxes are pending (busy), the frame is rejected.
 ///     - If at least one mailbox is pending, the frame is accepted only if its CAN ID value is smaller than that of
-///       all pending mailboxes. This is done to avoid priority inversion; see the UAVCAN Specification for details.
+///       all pending mailboxes. This is done to avoid priority inversion; see the Cyphal Specification for details.
 ///     - If current_time > deadline, the frame is discarded, TX timeout error is registered, and true is returned.
 ///
 /// This interface does not support the transmission of CAN 2.0A (standard-ID) frames.
@@ -140,7 +139,7 @@ bool bxCANReapError(const uint8_t iface_index);
 ///                                           |
 ///                                            ---> [BACKLOG QUEUE] ---> [SLOW INTERFACE]
 ///
-/// Where "FRAME SOURCE" is typically a UAVCAN/CAN implementation library (like Libcanard), and "SHARED QUEUE" is the
+/// Where "FRAME SOURCE" is typically a Cyphal/CAN implementation library (like Libcanard), and "SHARED QUEUE" is the
 /// main prioritized transmission queue (like the one maintained by Libcanard). Which interface is the FAST one and
 /// which one is the SLOW one cannot be known in advance, obviously. They may change roles depending on the bus load
 /// conditions. The backlog queue may be implemented as a naive static array that is scanned whenever a frame is

@@ -1,5 +1,5 @@
 /// This software is distributed under the terms of the MIT License.
-/// Copyright (c) 2016-2020 UAVCAN Development Team.
+/// Copyright (c) 2016-2022 OpenCyphal
 /// Authors: Pavel Kirienko <pavel.kirienko@zubax.com>, Tom De Rybel <tom.derybel@robocow.be>
 
 #include "bxcan.h"
@@ -294,7 +294,7 @@ bool bxCANConfigure(const uint8_t      iface_index,  //
         //
         // Filters are alternating between FIFO0 and FIFO1 in order to equalize the load. (Set in FFA1R.)
         // This will cause occasional priority inversion and frame reordering on reception,
-        // but that is acceptable for UAVCAN, and a majority of other protocols will tolerate
+        // but that is acceptable for Cyphal/CAN, and a majority of other protocols will tolerate
         // this too, since there will be no reordering within the same CAN ID.
         if (iface_index == 0U)
         {
