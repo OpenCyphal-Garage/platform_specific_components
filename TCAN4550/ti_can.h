@@ -101,6 +101,9 @@ typedef struct
 
 // Bits In Registers
 
+//
+// //
+//
 
 // Message RAM Design Parameters 
 typedef struct
@@ -114,4 +117,49 @@ typedef struct
     uint8_t tx_buffers;
 } TiMRAMParams;
 
+// Filters Configuration: SID and XID (Standard and Extended)
 
+// Number of Standard Acceptance Filters
+#define CAN_SID_NUM_ACCEPTANCE_FILTERS 14U
+
+// Number of Extended Acceptance Filters
+#define CAN_XID_NUM_ACCEPTANCE_FILTERS 14U
+
+// SID
+typedef struct
+{
+    uint32_t sid_id;
+    uint32_t sid_mask;
+} CAN_SIDFilterParams;
+
+#define CAN_SFID1_SHFT (16U)
+#define CAN_SFID1_MASK (0x7FF << CAN_SFID1_SHFT)
+#define CAN_SID_FILTER_1(x) ((uint8_t)x << CAN_SFID1_SHFT)
+
+#define CAN_SFID2_SHFT (0U)
+#define CAN_SFID2_MASK (0x7FF << CAN_SFID2_SHFT)
+#define CAN_SID_FILTER_2(x) ((uint8_t)x << CAN_SFID2_SHFT)
+
+
+
+
+
+// XID
+typedef struct
+{
+    uint32_t xid_id;
+    uint32_t xid_mask;
+} CAN_SIDFilterParams;
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+/// Device Initialization Mode
+
+// CC Control Register Address
+#define CCCR 0x1018 
+
+// Bits Necessary For Initialization
+#define CAN_CCCR_INIT (1U << 0U)
+#define CAN_CCCR_CCE  (1U << 1U)
+
+///////////////////////////////////////////////////////////////////////////////////////////
