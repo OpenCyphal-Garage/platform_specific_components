@@ -13,12 +13,14 @@ Checks: >-
   performance-*,
   portability-*,
   readability-*,
+  -bugprone-easily-swappable-parameters,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-macro-to-enum,
   -google-readability-todo,
   -llvm-header-guard,
   -modernize-macro-to-enum,
   -readability-avoid-const-params-in-decls,
+  -readability-identifier-length,
   -readability-magic-numbers,
 CheckOptions:
   - key:   readability-function-cognitive-complexity.Threshold

@@ -5,6 +5,7 @@
 #include "bxcan.h"
 #include "bxcan_registers.h"
 #include <assert.h>
+#include <stdint.h>
 #include <string.h>
 
 /// Configure the maximum interface index for the bxCAN hardware available in your MCU.
