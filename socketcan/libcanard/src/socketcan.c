@@ -30,7 +30,7 @@
 #define KILO 1000L
 #define MEGA (KILO * KILO)
 
-static int16_t getNegatedErrno()
+static int16_t getNegatedErrno(void)
 {
     const int out = -abs(errno);
     if (out < 0)
