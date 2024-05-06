@@ -52,7 +52,7 @@ jobs:
         run: |
           sudo apt update
           wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 18
-          sudo apt install clang-tidy-18 clang-format-18
+          sudo apt install clang-tidy-18 clang-format-12
 
       - name: Static analysis
         working-directory: ${{github.workspace}}/stm32/libcanard/bxcan/
@@ -61,6 +61,6 @@ jobs:
       - name: Format check
         working-directory: ${{github.workspace}}/stm32/libcanard/bxcan/
         run: |
-          clang-format-18 -i -fallback-style=none -style=file --verbose src/*.[ch]
+          clang-format-12 -i -fallback-style=none -style=file --verbose src/*.[ch]
           modified="$(git status --porcelain --untracked-files=no)"
           if [ -n "$modified" ]; then echo "Please format code properly."; exit 1; fi
