@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
@@ -44,23 +44,23 @@ jobs:
   stm32:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
       - name: Install Dependencies
         run: |
           sudo apt update
-          wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 12
-          sudo apt install clang-tidy-12 clang-format-12
+          wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 18
+          sudo apt install clang-tidy-18 clang-format-18
 
       - name: Static analysis
         working-directory: ${{github.workspace}}/stm32/libcanard/bxcan/
-        run: clang-tidy-12 src/*.c --extra-arg='-DBXCAN_MAX_IFACE_INDEX=1' --extra-arg='-DBXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK=72000000'
+        run: clang-tidy-18 src/*.c --extra-arg='-DBXCAN_MAX_IFACE_INDEX=1' --extra-arg='-DBXCAN_BUSYWAIT_DELAY_SYSTEM_CORE_CLOCK=72000000'
 
       - name: Format check
         working-directory: ${{github.workspace}}/stm32/libcanard/bxcan/
         run: |
-          clang-format-12 -i -fallback-style=none -style=file --verbose src/*.[ch]
+          clang-format-18 -i -fallback-style=none -style=file --verbose src/*.[ch]
           modified="$(git status --porcelain --untracked-files=no)"
           if [ -n "$modified" ]; then echo "Please format code properly."; exit 1; fi

@@ -41,3 +41,7 @@ build/
 cmake-build-*/
 __pycache__/
 dsdlc_generated/
+
+# OS stuff
+.DS_Store
+*.bak
