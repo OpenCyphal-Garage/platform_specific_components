@@ -13,10 +13,11 @@ Checks: >-
   performance-*,
   portability-*,
   readability-*,
-  -google-readability-todo,
-  -readability-avoid-const-params-in-decls,
-  -llvm-header-guard,
   -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-macro-to-enum,modernize-macro-to-enum,
+  -google-readability-todo,
+  -llvm-header-guard,
+  -readability-avoid-const-params-in-decls,
   -readability-magic-numbers,
 CheckOptions:
   - key:   readability-function-cognitive-complexity.Threshold
