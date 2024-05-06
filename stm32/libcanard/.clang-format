@@ -31,7 +31,7 @@ BraceWrapping:
   AfterFunction: true
   AfterUnion: true
   AfterNamespace: true
-  AfterExternBlock: true
+  AfterExternBlock: false
   BeforeElse: true
 
 BreakBeforeTernaryOperators: true
