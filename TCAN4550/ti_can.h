@@ -25,7 +25,15 @@ extern "C" {
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 /// 0 - CAN, 1 - CAN FD
-#define CAN_MODE 1 
+#define CAN_MODE 1
+
+/// 0 - Bit Rate Switching disabled, 1 - enabled
+#define BRS 1
+#define CCCR_BRSE (1U << 9U)
+ 
+/// 0 - Flexible Datarate disabled, 1 - enabled
+#define FD 1
+#define CCCR_FDOE (1U << 8U)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -141,9 +149,6 @@ typedef struct
 #define CAN_SID_FILTER_2(x) ((uint8_t)x << CAN_SFID2_SHFT)
 
 
-
-
-
 // XID
 typedef struct
 {
@@ -155,11 +160,19 @@ typedef struct
 
 /// Device Initialization Mode
 
+// Device Mode Selection Register Address
+#define MODE_SEL 0x0800
+
+// Available Device Modes
+#define STANDBY_MODE (0b01 << 6U)
+#define NORMAL_MODE (0b10 << 6U)
+
 // CC Control Register Address
 #define CCCR 0x1018 
 
 // Bits Necessary For Initialization
 #define CAN_CCCR_INIT (1U << 0U)
 #define CAN_CCCR_CCE  (1U << 1U)
+#define CAN_CCCR_CSR  (1U << 4U)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
