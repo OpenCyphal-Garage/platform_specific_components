@@ -24,16 +24,7 @@ extern "C" {
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-/// 0 - CAN, 1 - CAN FD
-#define CAN_MODE 1
 
-/// 0 - Bit Rate Switching disabled, 1 - enabled
-#define BRS 1
-#define CCCR_BRSE (1U << 9U)
- 
-/// 0 - Flexible Datarate disabled, 1 - enabled
-#define FD 1
-#define CCCR_FDOE (1U << 8U)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -54,8 +45,8 @@ extern "C" {
 #define CAN_NBTP_NTSEG2_MASK (0x7FU << CAN_NBTP_NTSEG2_SHFT)
 #define CAN_TIME_SEG_2(x) ((uint8_t)(x) << CAN_NBTP_NTSEG2_SHFT)
 
-#define CAN_NBTP_NBRP_SHFT (0U)
-#define CAN_NBTP_NBRP_MASK (0x7FU << CAN_NBTP_NBRP_SHFT)
+#define CAN_NBTP_NBRP_SHFT (24U)
+#define CAN_NBTP_NBRP_MASK (0x1U << CAN_NBTP_NBRP_SHFT)
 #define CAN_PRESCALER(x) ((uint8_t)(x) << CAN_NBTP_NBRP_SHFT)
 
 // FOR CAN-FD
@@ -107,22 +98,175 @@ typedef struct
 #define TXBC  0x10C0 // Tx Buffers
 #define TXESC 0x10C8 // Tx Element Size Config
 
-// Bits In Registers
+// MRAM Params Bits
 
-//
-// //
-//
+// TODO: Check the mask values
+// SID
+#define SID_LSS_SHFT (16U)
+#define SID_LSS_MASK (0xFFU << SID_LSS_SHFT)
+#define SID_LSS(x) ((uint8_t)(x) << SID_LSS_SHFT)
+
+#define SID_FLSS_SHFT (0U)
+#define SID_FLSS_MASK (0xFFFFU << SID_LSS_SHFT)
+#define SID_FLSS(x) ((uint8_t)(x) << SID_LSS_SHFT)
+
+
+// XID
+#define XID_LSE_SHFT (16U)
+#define XID_LSE_MASK (0x7FU << XID_LSE_SHFT)
+#define XID_LSE(x) ((uint8_t)(x) << XID_LSE_SHFT)
+
+
+#define XID_FLSEA_SHFT (16U)
+#define XID_FLSEA_MASK (0xFFFFU << XID_FLSEA_SHFT)
+#define XID_FLSEA(x) ((uint8_t)(x) << XID_FLSEA_SHFT)
+
+
+// Rx FIFO 0
+#define RXF0_F0OM_SHFT (31U)
+#define RXF0_F0OM_MASK (0x1U << RXF0_F0OM_SHFT)
+#define RXF0_F0OM(x) ((uint8_t)(x) << RXF0_F0OM_SHFT)
+
+#define RXF0_F0WM_SHFT (24U)
+#define RXF0_F0WM_MASK (0x7FU << RXF0_F0WM_SHFT)
+#define RXF0_F0WM(x) ((uint8_t)(x) << RXF0_F0WM_SHFT)
+
+#define RXF0_F0S_SHFT (16U)
+#define RXF0_F0S_MASK (0x7FU << RXF0_F0S_SHFT)
+#define RXF0_F0S(x) ((uint8_t)(x) << RXF0_F0S_SHFT)
+
+#define RXF0_F0SA_SHFT (0U)
+#define RXF0_F0SA_MASK (0xFFFFU << RXF0_F0SA_SHFT)
+#define RXF0_F0SA(x) ((uint8_t)(x) << RXF0_F0SA_SHFT)
+
+
+// Rx FIFO 1
+#define RXF1_F1OM_SHFT (31U)
+#define RXF1_F1OM_MASK (0x1U << RXF1_F1OM_SHFT)
+#define RXF1_F1OM(x) ((uint8_t)(x) << RXF1_F1OM_SHFT)
+
+#define RXF1_F1WM_SHFT (24U)
+#define RXF1_F1WM_MASK (0x7FU << RXF1_F1WM_SHFT)
+#define RXF1_F1WM(x) ((uint8_t)(x) << RXF1_F1WM_SHFT)
+
+#define RXF1_F1S_SHFT (16U)
+#define RXF1_F1S_MASK (0x7FU << RXF1_F1S_SHFT)
+#define RXF1_F1S(x) ((uint8_t)(x) << RXF1_F1S_SHFT)
+
+#define RXF1_F1SA_SHFT (0U)
+#define RXF1_F1SA_MASK (0xFFFFU << RXF1_F1SA_SHFT)
+#define RXF1_F1SA(x) ((uint8_t)(x) << RXF1_F1SA_SHFT)
+
+
+// Rx Buffer
+#define RXB_RBSA_SHFT (0U)
+#define RXB_RBSA_MASK (0xFFFFU << RXB_RBSA_SHFT)
+#define RXB_RBSA(x) ((uint8_t)(x) << RXB_RBSA_SHFT)
+
+
+// Rx Element Size Config
+#define RX_RBDS_SHFT (8U)
+#define RX_RBDS_MASK (0x7U << RX_RBDS_SHFT)
+#define RX_RBDS(x) ((uint8_t)(x) << RX_RBDS_SHFT)
+
+#define RX_F1DS_SHFT (4U)
+#define RX_F1DS_MASK (0x7U << RX_F1DS_SHFT)
+#define RX_F1DS(x) ((uint8_t)(x) << RX_F1DS_SHFT)
+
+#define RX_F0DS_SHFT (0U)
+#define RX_F0DS_MASK (0x7U << RX_F0DS_SHFT)
+#define RX_F0DS(x) ((uint8_t)(x) << RX_F0DS_SHFT)
+
+
+// Tx Event FIFO Config
+#define TXEVF_EFWM_SHFT (24U)
+#define TXEVF_EFWM_MASK (0x3FU << TXEVF_EFWM_SHFT)
+#define TXEVF_EFWM(x) ((uint8_t)(x) << TXEVF_EFWM_SHFT)
+
+#define TXEVF_EFS_SHFT (16U)
+#define TXEVF_EFS_MASK (0x3FU << TXEVF_EFS_SHFT)
+#define TXEVF_EFS(x) ((uint8_t)(x) << TXEVF_EFS_SHFT)
+
+#define TXEVF_EFSA_SHFT (0U)
+#define TXEVF_EFSA_MASK (0xFFFFU << TXEVF_EFSA_SHFT)
+#define TXEVF_EFSA(x) ((uint8_t)(x) << TXEVF_EFSA_SHFT)
+
+
+// Tx Buffer Config
+#define TXB_TFQM_SHFT (30U)
+#define TXB_TFQM_MASK (0x1U << TXB_TFQM_SHFT)
+#define TXB_TFQM(x) ((uint8_t)(x) << TXB_TFQM_SHFT)
+
+#define TXB_TFQS_SHFT (24U)
+#define TXB_TFQS_MASK (0x3FU << TXB_TFQS_SHFT)
+#define TXB_TFQS(x) ((uint8_t)(x) << TXB_TFQS_SHFT)
+
+#define TXB_NDTB_SHFT (16U)
+#define TXB_NDTB_MASK (0x3FU << TXB_NDTB_SHFT)
+#define TXB_NDTB(x) ((uint8_t)(x) << TXB_NDTB_SHFT)
+
+#define TXB_TBSA_SHFT (0U)
+#define TXB_TBSA_MASK (0xFFFFU << TXB_TBSA_SHFT)
+#define TXB_TBSA(x) ((uint8_t)(x) << TXB_TBSA_SHFT)
+
+
+// TX Element Size Config
+#define TX_TBDS_SHFT (0U)
+#define TX_TBDS_MASK (0x7U << TX_TBDS_SHFT)
+#define TX_TBDS(x) ((uint8_t)(x) << TX_TBDS_SHFT)
+
+
 
 // Message RAM Design Parameters 
+
+// MDS = Maximum Data Size
+// BPE = Bytes Per Element
+// NOE = Number Of Elements
+
 typedef struct
 {
-    uint8_t sid_filters;     /// 11-bit filter size
-    uint8_t xid_filters;     /// 29-bit filter size
-    uint8_t rx_fifo_0;       
-    uint8_t rx_fifo_1;
-    uint8_t rx_buffers;
-    uint8_t tx_event_fifo;
-    uint8_t tx_buffers;
+    // SID
+    uint32_t SID_LSS;
+    uint32_t SID_FLSS;
+
+    // XID
+    uint32_t XID_LSE;
+    uint32_t XID_FLSEA;
+
+    // Rx FIFO 0
+    uint32_t RXF0_F0OM; 
+    uint32_t RXF0_F0WM; 
+    uint32_t RXF0_F0S; 
+    uint32_t RXF0_F0SA;
+
+    // Rx FIFO 1
+    uint32_t RXF1_F1OM;
+    uint32_t RXF1_F1WM;
+    uint32_t RXF1_F1S;
+    uint32_t RXF1_F1SA;
+    
+    // Rx Buffer
+    uint32_t RXB_RBSA;
+
+    // Rx Element Size Config
+    uint32_t RX_RBDS;
+    uint32_t RX_F1DS;
+    uint32_t RX_F0DS;
+
+    // Tx Event FIFO Config
+    uint32_t TXEVF_EFWM;
+    uint32_t TXEVF_EFS;
+    uint32_t TXEVF_EFSA;
+
+    // Tx Buffer Config
+    uint32_t TXB_TFQM; 
+    uint32_t TXB_TFQS; 
+    uint32_t TXB_NDTB; 
+    uint32_t TXB_TBSA;
+
+    // TX Element Size Config
+    uint32_t TX_TBDS;
+
 } TiMRAMParams;
 
 // Filters Configuration: SID and XID (Standard and Extended)
@@ -174,5 +318,16 @@ typedef struct
 #define CAN_CCCR_INIT (1U << 0U)
 #define CAN_CCCR_CCE  (1U << 1U)
 #define CAN_CCCR_CSR  (1U << 4U)
+
+/// 0 - CAN, 1 - CAN FD
+#define CAN_MODE 1
+
+/// 0 - Bit Rate Switching disabled, 1 - enabled
+#define BRS 1
+#define CCCR_BRSE (1U << 9U)
+ 
+/// 0 - Flexible Datarate disabled, 1 - enabled
+#define FD 1
+#define CCCR_FDOE (1U << 8U)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
