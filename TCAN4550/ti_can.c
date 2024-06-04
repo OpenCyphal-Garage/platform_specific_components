@@ -8,8 +8,8 @@
 #include <string.h>
 
 
-uint8_t spiRegisterWrite(uint16_t addr,
-                      uint32_t regValue)
+uint8_t spiRegisterWrite(uint32_t addr, 
+                         uint32_t regValue)
 {
 
     /**
@@ -21,7 +21,7 @@ uint8_t spiRegisterWrite(uint16_t addr,
     return 0;
 }
 
-uint32_t spiRegisterRead(uint16_t addr)
+uint32_t spiRegisterRead(uint32_t addr)
 {   
     uint32_t regValue = 0;
 
@@ -219,4 +219,42 @@ uint8_t initCAN (const BitTimingParams  * bTParams,
     return 0;
 }
 
+uint8_t setSIDFilters(SID_filter * filters, TiMRAMParams * MRAM) 
+{
+    size_t size = (size_t) MRAM -> SID_LSS;
+    uint32_t filter_addr = MRAM -> SID_FLSS;
+
+    for (size_t i = 0; i < size; i++)
+    {
+
+    }
+
+    return 0;
+}
+
+uint8_t setXIDFilters(SID_filter * filters, TiMRAMParams * MRAM)
+{
+    size_t size = (size_t) MRAM -> XID_LSE;
+
+
+    return 0;
+}
+
+uint8_t sendCAN(TiMRAMParams * MRAM)
+{}
+    // Check that any TX Buffer is vacant
+    uint32_t free_level = spiRegisterRead(TXFQS);
+    
+    if (!(TFFL(free_level)))
+    {
+        return 1;
+    }
+
+    uint8_t index = TFQPI(free_level);
+
+    uint16_t memory_offset = ;
+
+
+    return 0;
+}
 

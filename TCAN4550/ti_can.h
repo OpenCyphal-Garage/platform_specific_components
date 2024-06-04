@@ -100,7 +100,6 @@ typedef struct
 
 // MRAM Params Bits
 
-// TODO: Check the mask values
 // SID
 #define SID_LSS_SHFT (16U)
 #define SID_LSS_MASK (0xFFU << SID_LSS_SHFT)
@@ -271,7 +270,52 @@ typedef struct
 
 // Filters Configuration: SID and XID (Standard and Extended)
 
-// Number of Standard Acceptance Filters
+typedef struct
+{
+    // In classic mode: SFID_1 = ID, SFID_2 = MASK
+    
+    uint16_t SFID_1; 
+    uint16_t SFID_2;
+    uint8_t SFT;
+    uint8_t SFEC;
+
+} SID_filter;
+
+
+// SID Filter Type
+#define SID_SFT_SHFT (30U)
+#define SID_SFT_MASK (0x3 << SID_SFT_SHFT)
+#define SID_SFT(x) ((uint8_t)(x) << SID_SFT_SHFT)
+
+// Options for the SID filter type
+#define RANGE_FILTER            0b00U
+#define DUAL_ID_FILTER          0b01U
+#define CLASSIC_FILTER          0b10U
+#define FILTER_ELEMENT_DISABLED 0b11U
+
+// Standard Element Filter Configuration
+#define SID_SFEC_SHFT (30U)
+#define SID_SFEC_MASK (0x3 << SID_SFEC_SHFT)
+#define SID_SFEC(x) ((uint8_t)(x) << SID_SFEC_SHFT)
+
+// Options for the element configuration
+#define DISABLE_FILTER_ELEMENT  0b000U
+#define STORE_RX_FIFO_0         0b000U  
+#define STORE_RX_FIFO_1         0b000U
+#define REJECT_MESSAGE          0b000U
+#define SET_AS_PRIO_MSG_DFLT    0b000U
+#define SET_AS_PRIO_FIFO_0      0b000U
+#define SET_AS_PRIO_FIFO_1      0b000U
+
+// Store into Rx Buffer or as debug message. If this is used, SFT is ignored and SFID1 is the filter. SFID2[10:9]
+// describes where to store message, SFID2[5:0] describes which Rx Buffer to put the message (must be within
+// the Rx Buffer configuration
+#define STORE_RX_BUF            0b000U
+
+
+
+
+/*// Number of Standard Acceptance Filters
 #define CAN_SID_NUM_ACCEPTANCE_FILTERS 14U
 
 // Number of Extended Acceptance Filters
@@ -298,7 +342,8 @@ typedef struct
 {
     uint32_t xid_id;
     uint32_t xid_mask;
-} CAN_SIDFilterParams;
+} CAN_SIDFilterParams;*/
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -331,3 +376,19 @@ typedef struct
 #define CCCR_FDOE (1U << 8U)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
+
+/// Message Sending
+
+#define TXFQS 0x10C4    // Tx FIFO/Queue Status register 
+
+#define TXBUF_AR 0x10D0 // Tx Buffer Add Request Register
+
+// Set on of the bits in TXBUF_AR to request the 
+// data to be sent from the corresponding TX Buffer
+
+
+#define TFFL_MASK 0x1FU
+#define TFFL(reg) ((reg) & TFFL_MASK)
+
+#define TFQPI_MAKS 0x1F0000
+#define TFQPI(reg) (((reg) & TFQPI_MAKS) >> 16U)
