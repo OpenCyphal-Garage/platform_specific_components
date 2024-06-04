@@ -222,20 +222,48 @@ uint8_t initCAN (const BitTimingParams  * bTParams,
 uint8_t setSIDFilters(SID_filter * filters, TiMRAMParams * MRAM) 
 {
     size_t size = (size_t) MRAM -> SID_LSS;
-    uint32_t filter_addr = MRAM -> SID_FLSS;
+    uint32_t * filter_addr = (uint32_t *)MRAM -> SID_FLSS;
+    uint32_t filter = 0;
 
     for (size_t i = 0; i < size; i++)
     {
+        filter = 0;
+        
+        filter |= SID_SFT   (filters[i].SFT);
+        filter |= SID_SFEC  (filters[i].SFEC);
+        filter |= SID_SFID1 (filters[i].SFID_1);
+        filter |= SID_SFID2 (filters[i].SFID_2);
 
+        spiRegisterWrite(filter_addr + i * sizeof(uint32_t), filter);
     }
 
     return 0;
 }
 
-uint8_t setXIDFilters(SID_filter * filters, TiMRAMParams * MRAM)
+uint8_t setXIDFilters(XID_filter * filters, TiMRAMParams * MRAM)
 {
-    size_t size = (size_t) MRAM -> XID_LSE;
+    size_t   size           = (size_t) MRAM -> XID_LSE;
+    uint32_t filter_addr    = MRAM -> XID_FLSEA;
+    uint64_t filter         = 0; // Two words needed for XID
+    uint32_t filter_1       = 0;
+    uint32_t filter_2       = 0;
 
+    for (size_t i = 0; i < size; i++)
+    {
+        filter      = 0;
+        filter_1    = 0;
+        filter_2    = 0;
+        
+        filter_1 |= XID_EFID2(filters[i].EFID2);
+        filter_1 |= XID_EFT(filters[i].EFT);
+
+        filter_2 |= XID_EFID2(filters[i].EFID2);
+        filter_2 |= XID_EFEC(filters[i].EFEC);
+
+        filter |= (filter_1 | filter_2);
+
+        spiRegisterWrite(filter_addr + i * sizeof(uint32_t), filter);
+    }
 
     return 0;
 }

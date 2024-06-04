@@ -273,76 +273,82 @@ typedef struct
 typedef struct
 {
     // In classic mode: SFID_1 = ID, SFID_2 = MASK
-    
+
     uint16_t SFID_1; 
     uint16_t SFID_2;
-    uint8_t SFT;
-    uint8_t SFEC;
+    uint8_t  SFT;
+    uint8_t  SFEC;
 
 } SID_filter;
 
 
 // SID Filter Type
 #define SID_SFT_SHFT (30U)
-#define SID_SFT_MASK (0x3 << SID_SFT_SHFT)
 #define SID_SFT(x) ((uint8_t)(x) << SID_SFT_SHFT)
 
-// Options for the SID filter type
+// Options for the SID & XID filter type
 #define RANGE_FILTER            0b00U
 #define DUAL_ID_FILTER          0b01U
 #define CLASSIC_FILTER          0b10U
 #define FILTER_ELEMENT_DISABLED 0b11U
 
 // Standard Element Filter Configuration
-#define SID_SFEC_SHFT (30U)
-#define SID_SFEC_MASK (0x3 << SID_SFEC_SHFT)
+#define SID_SFEC_SHFT (27U)
 #define SID_SFEC(x) ((uint8_t)(x) << SID_SFEC_SHFT)
 
 // Options for the element configuration
 #define DISABLE_FILTER_ELEMENT  0b000U
-#define STORE_RX_FIFO_0         0b000U  
-#define STORE_RX_FIFO_1         0b000U
-#define REJECT_MESSAGE          0b000U
-#define SET_AS_PRIO_MSG_DFLT    0b000U
-#define SET_AS_PRIO_FIFO_0      0b000U
-#define SET_AS_PRIO_FIFO_1      0b000U
+#define STORE_RX_FIFO_0         0b001U  
+#define STORE_RX_FIFO_1         0b010U
+#define REJECT_MESSAGE          0b011U
+#define SET_AS_PRIO_MSG_DFLT    0b100U
+#define SET_AS_PRIO_FIFO_0      0b101U
+#define SET_AS_PRIO_FIFO_1      0b110U
 
 // Store into Rx Buffer or as debug message. If this is used, SFT is ignored and SFID1 is the filter. SFID2[10:9]
 // describes where to store message, SFID2[5:0] describes which Rx Buffer to put the message (must be within
 // the Rx Buffer configuration
-#define STORE_RX_BUF            0b000U
+#define STORE_RX_BUF            0b111U
 
 
+#define SID_SFID1_SHFT (16U)
+#define SID_SFID1_MASK (0x7FFU)
+#define SID_SFID1(x) (((uint32_t)(x) & SID_SFID1_MASK) << SID_SFID1_SHFT)
+
+#define SID_SFID2_SHFT (0U)
+#define SID_SFID2_MASK (0x7FFU)
+#define SID_SFID2(x) (((uint32_t)(x) & SID_SFID2_MASK) << SID_SFID2_SHFT)
 
 
-/*// Number of Standard Acceptance Filters
-#define CAN_SID_NUM_ACCEPTANCE_FILTERS 14U
-
-// Number of Extended Acceptance Filters
-#define CAN_XID_NUM_ACCEPTANCE_FILTERS 14U
-
-// SID
-typedef struct
+typedef struct 
 {
-    uint32_t sid_id;
-    uint32_t sid_mask;
-} CAN_SIDFilterParams;
+    
+    uint32_t EFID1;
+    uint32_t EFID2;
+    uint8_t  EFT;   // For type use same options as for SID
+    uint8_t  EFEC;
 
-#define CAN_SFID1_SHFT (16U)
-#define CAN_SFID1_MASK (0x7FF << CAN_SFID1_SHFT)
-#define CAN_SID_FILTER_1(x) ((uint8_t)x << CAN_SFID1_SHFT)
+} XID_filter;
 
-#define CAN_SFID2_SHFT (0U)
-#define CAN_SFID2_MASK (0x7FF << CAN_SFID2_SHFT)
-#define CAN_SID_FILTER_2(x) ((uint8_t)x << CAN_SFID2_SHFT)
+// Word 0
+
+#define XID_EFEC_SHFT (29U)
+#define XID_EFEC(x) ((uint8_t)(x) << XID_EFEC_SHFT)
+
+#define XID_EFID1_SHFT (0U)
+#define XID_EFID1_MASK (0x1FFFFFFF)
+#define XID_EFID1(x) (((uint32_t)(x) & XID_EFID1_MASK) << XID_EFID1_SHFT)
+
+// Word 1
+
+#define XID_EFT_SHFT (30U)
+#define XID_EFT(x) ((uint8_t)(x) << XID_EFT_SHFT)
+
+#define XID_EFID2_SHFT (0U)
+#define XID_EFID2_MASK (0x1FFFFFFF)
+#define XID_EFID2(x) (((uint32_t)(x) & XID_EFID2_MASK) << XID_EFID2_SHFT)
 
 
-// XID
-typedef struct
-{
-    uint32_t xid_id;
-    uint32_t xid_mask;
-} CAN_SIDFilterParams;*/
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
