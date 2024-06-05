@@ -85,7 +85,7 @@ uint8_t initCAN (const BitTimingParams  * bTParams,
     else if (CAN_MODE == 1)
     {
         // Check BRS and FD settings
-        if (BRS)    init |= CCCR_BRSE;
+        if (BIT_RATE_SWITCH)    init |= CCCR_BRSE;
         if (FD)     init |= CCCR_FDOE;
 
         spiRegisterWrite(CCCR, init);
@@ -268,20 +268,66 @@ uint8_t setXIDFilters(XID_filter * filters, TiMRAMParams * MRAM)
     return 0;
 }
 
-uint8_t sendCAN(TiMRAMParams * MRAM)
-{}
+uint8_t sendCAN(TiMRAMParams * MRAM, TXElement * TXE)
+{
     // Check that any TX Buffer is vacant
     uint32_t free_level = spiRegisterRead(TXFQS);
+
+    uint32_t tx_buffer_start_addr = MRAM -> TXB_TBSA;
+    uint32_t tx_buffer_element_size = MRAM -> TX_TBDS + 8; // Additional 8 bytes of header
+
+
     
     if (!(TFFL(free_level)))
     {
         return 1;
     }
 
-    uint8_t index = TFQPI(free_level);
+    uint32_t index = TFQPI(free_level);
 
-    uint16_t memory_offset = ;
+    uint32_t memory_offset = tx_buffer_start_addr + (tx_buffer_element_size * index);
 
+
+    uint32_t word_0 = 0;
+    uint32_t word_1 = 0;
+    uint32_t word_2 = 0;
+
+    if (TXE -> ESI) word_0 |= (1 << ESI_SHFT);
+    if (TXE -> RTR) word_0 |= (1 << RTR_SHFT);
+    if (TXE -> XTD)
+    {
+        word_0 |= (1 << XTD_SHFT);
+        word_0 |= ((TXE -> ID) << XID_SHFT);
+    } 
+    else
+    {
+        word_0 |= ((TXE -> ID) << SID_SHFT);
+    }
+
+    spiRegisterWrite(memory_offset, word_0);
+
+    word_1 |= ((TXE -> MM) << MM_SHFT);
+
+    if (TXE -> EFC) word_1 |= (1 << EFC_SHFT);
+    if (TXE -> FDF) word_1 |= (1 << FDF_SHFT);
+    if (TXE -> BRS) word_1 |= (1 << BRS_SHFT);
+    
+    word_1 |= ((TXE -> DLC) << DLC_SHFT);
+
+    spiRegisterWrite(memory_offset + WORD, word_1);
+
+    word_2 |= ( ((TXE -> data_byte_0) << DB0_SHFT)   |
+                ((TXE -> data_byte_1) << DB1_SHFT)   |
+                ((TXE -> data_byte_2) << DB2_SHFT)   |
+                ((TXE -> data_byte_3) << DB3_SHFT)   );
+    
+    spiRegisterWrite(memory_offset + 2*WORD, word_2);
+
+    uint32_t add_request = 0;
+
+    add_request |= (1U << index);
+
+    spiRegisterWrite(TXBUF_AR, add_request);
 
     return 0;
 }

@@ -374,7 +374,7 @@ typedef struct
 #define CAN_MODE 1
 
 /// 0 - Bit Rate Switching disabled, 1 - enabled
-#define BRS 1
+#define BIT_RATE_SWITCH 1
 #define CCCR_BRSE (1U << 9U)
  
 /// 0 - Flexible Datarate disabled, 1 - enabled
@@ -398,3 +398,47 @@ typedef struct
 
 #define TFQPI_MAKS 0x1F0000
 #define TFQPI(reg) (((reg) & TFQPI_MAKS) >> 16U)
+
+
+typedef struct
+{
+    // Word 0
+    bool ESI;
+    bool XTD;
+    bool RTR;
+    uint16_t ID;
+
+    // Word 1
+    uint8_t MM;
+    bool EFC;
+    bool FDF;
+    bool BRS;
+    uint8_t DLC;
+
+    // Word 2
+    uint8_t data_byte_3;
+    uint8_t data_byte_2;
+    uint8_t data_byte_1;
+    uint8_t data_byte_0;
+
+} TXElement;
+
+#define ESI_SHFT 31U
+#define XTD_SHFT 30U
+#define RTR_SHFT 29U
+#define SID_SHFT 18U
+#define XID_SHFT  0U
+
+#define MM_SHFT  24U
+#define EFC_SHFT 23U
+#define FDF_SHFT 21U
+#define BRS_SHFT  20U
+#define DLC_SHFT 16U
+
+#define DB3_SHFT 24U
+#define DB2_SHFT 16U
+#define DB1_SHFT 8U
+#define DB0_SHFT 0U
+
+#define WORD     0x4U
+
