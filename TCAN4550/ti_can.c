@@ -18,6 +18,8 @@ uint8_t spiRegisterWrite(uint32_t addr,
      * 
     */
 
+   //
+
     return 0;
 }
 
@@ -38,6 +40,8 @@ uint8_t initCAN (const BitTimingParams  * bTParams,
                  const TiMRAMParams     * MRAM)
 {
 
+    // TODO: Cover edge cases for values in structs + error reporting
+
     // Standby Mode Check
     if ((spiRegisterRead(MODE_SEL)) != STANDBY_MODE)
     {
@@ -48,7 +52,7 @@ uint8_t initCAN (const BitTimingParams  * bTParams,
     // TODO: Check whether CSR needs to be written before CCE and INIT
     uint32_t init = spiRegisterRead(CCCR);
     init |= (CAN_CCCR_CCE | CAN_CCCR_INIT);
-    init &= ~CAN_CCCR_CSR; 
+    init &= ~CAN_CCCR_CSR;
     
     uint32_t bit_timing = 0;
     uint32_t trans_delay_comp = 0;
@@ -254,7 +258,7 @@ uint8_t setXIDFilters(XID_filter * filters, TiMRAMParams * MRAM)
         filter_1    = 0;
         filter_2    = 0;
         
-        filter_1 |= XID_EFID2(filters[i].EFID2);
+        filter_1 |= XID_EFID2(filters[i].EFID1);
         filter_1 |= XID_EFT(filters[i].EFT);
 
         filter_2 |= XID_EFID2(filters[i].EFID2);
@@ -262,7 +266,7 @@ uint8_t setXIDFilters(XID_filter * filters, TiMRAMParams * MRAM)
 
         filter |= (filter_1 | filter_2);
 
-        spiRegisterWrite(filter_addr + i * sizeof(uint32_t), filter);
+        spiRegisterWrite(filter_addr + i, filter);
     }
 
     return 0;
@@ -314,14 +318,14 @@ uint8_t sendCAN(TiMRAMParams * MRAM, TXElement * TXE)
     
     word_1 |= ((TXE -> DLC) << DLC_SHFT);
 
-    spiRegisterWrite(memory_offset + WORD, word_1);
+    spiRegisterWrite(memory_offset + sizeof(word_0), word_1);
 
     word_2 |= ( ((TXE -> data_byte_0) << DB0_SHFT)   |
                 ((TXE -> data_byte_1) << DB1_SHFT)   |
                 ((TXE -> data_byte_2) << DB2_SHFT)   |
                 ((TXE -> data_byte_3) << DB3_SHFT)   );
     
-    spiRegisterWrite(memory_offset + 2*WORD, word_2);
+    spiRegisterWrite(memory_offset + sizeof(word_0) + sizeof(word_1), word_2);
 
     uint32_t add_request = 0;
 

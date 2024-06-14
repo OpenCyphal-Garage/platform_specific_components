@@ -9,7 +9,7 @@
 /// without having to port an existing codebase to a new platform.
 ///
 /// Author: Daniil Bragin
-///
+/// Reference: 
 
 
 #pragma once
@@ -24,7 +24,13 @@ extern "C" {
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-
+// TODO: Fix naming convention
+// Naming convention:
+// CAN_NBTP_NSJW_MASK:
+// NBTP is a register
+// NSJW is a bit
+// CAN means that it is meant for CAN
+// MASK is its purpose
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
