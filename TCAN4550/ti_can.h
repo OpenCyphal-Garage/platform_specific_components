@@ -41,19 +41,19 @@ extern "C" {
 
 #define CAN_NBTP_NSJW_SHFT (25U)
 #define CAN_NBTP_NSJW_MASK (0x7FU << CAN_NBTP_NSJW_SHFT)
-#define CAN_SYNC_JUMP_WIDTH(x) ((uint8_t)(x) << CAN_NBTP_NSJW_SHFT)
+#define CAN_SYNC_JUMP_WIDTH(x) ((uint32_t)(x) << CAN_NBTP_NSJW_SHFT)
 
 #define CAN_NBTP_NTSEG1_SHFT (8U)
 #define CAN_NBTP_NTSEG1_MASK (0xFFU << CAN_NBTP_NTSEG1_SHFT)
-#define CAN_TIME_SEG_1(x) ((uint8_t)(x) << CAN_NBTP_NTSEG1_SHFT)
+#define CAN_TIME_SEG_1(x) ((uint32_t)(x) << CAN_NBTP_NTSEG1_SHFT)
 
 #define CAN_NBTP_NTSEG2_SHFT (0U)
 #define CAN_NBTP_NTSEG2_MASK (0x7FU << CAN_NBTP_NTSEG2_SHFT)
-#define CAN_TIME_SEG_2(x) ((uint8_t)(x) << CAN_NBTP_NTSEG2_SHFT)
+#define CAN_TIME_SEG_2(x) ((uint32_t)(x) << CAN_NBTP_NTSEG2_SHFT)
 
 #define CAN_NBTP_NBRP_SHFT (24U)
 #define CAN_NBTP_NBRP_MASK (0x1U << CAN_NBTP_NBRP_SHFT)
-#define CAN_PRESCALER(x) ((uint8_t)(x) << CAN_NBTP_NBRP_SHFT)
+#define CAN_PRESCALER(x) ((uint32_t)(x) << CAN_NBTP_NBRP_SHFT)
 
 // FOR CAN-FD
 #define DBTP 0x100C 
@@ -61,23 +61,23 @@ extern "C" {
 
 #define CANFD_DBTP_DSJW_SHFT (0U)
 #define CANFD_DBTP_DSJW_MASK (0xFU << CANFD_DBTP_DSJW_SHFT)
-#define CANFD_SYNC_JUMP_WIDTH(x) ((uint8_t)(x) << CANFD_DBTP_DSJW_SHFT)
+#define CANFD_SYNC_JUMP_WIDTH(x) ((uint32_t)(x) << CANFD_DBTP_DSJW_SHFT)
 
 #define CANFD_DBTP_DTSEG1_SHFT (8U)
 #define CANFD_DBTP_DTSEG1_MASK (0x1FU << CANFD_DBTP_DTSEG1_SHFT)
-#define CANFD_TIME_SEG_1_WIDTH(x) ((uint8_t)(x) << CANFD_DBTP_DTSEG1_SHFT)
+#define CANFD_TIME_SEG_1_WIDTH(x) ((uint32_t)(x) << CANFD_DBTP_DTSEG1_SHFT)
 
 #define CANFD_DBTP_DTSEG2_SHFT (4U)
 #define CANFD_DBTP_DTSEG2_MASK (0xFU << CANFD_DBTP_DTSEG2_SHFT)
-#define CANFD_TIME_SEG_2_WIDTH(x) ((uint8_t)(x) << CANFD_DBTP_DTSEG2_SHFT)
+#define CANFD_TIME_SEG_2_WIDTH(x) ((uint32_t)(x) << CANFD_DBTP_DTSEG2_SHFT)
 
 #define CANFD_DBTP_DBRP_SHFT (16U)
 #define CANFD_DBTP_DBRP_MASK (0xFU << CANFD_DBTP_DBRP_SHFT)
-#define CANFD_PRESCALER(x) ((uint8_t)(x) << CANFD_DBTP_DBRP_SHFT)
+#define CANFD_PRESCALER(x) ((uint32_t)(x) << CANFD_DBTP_DBRP_SHFT)
 
 #define CANFD_TDCR_TDCO_SHFT (8U)
 #define CANFD_TDCR_TDCO_MASK (0x7FU << CANFD_TDCR_TDCO_SHFT)
-#define CANFD_DELAY_COMPENSATION_OFFSET(x) ((uint8_t)(x) << CANFD_TDCR_TDCO_SHFT)
+#define CANFD_DELAY_COMPENSATION_OFFSET(x) ((uint32_t)(x) << CANFD_TDCR_TDCO_SHFT)
 
 // Bit Timing Parameters
 typedef struct
@@ -109,116 +109,116 @@ typedef struct
 // SID
 #define SID_LSS_SHFT (16U)
 #define SID_LSS_MASK (0xFFU << SID_LSS_SHFT)
-#define SID_LSS(x) ((uint8_t)(x) << SID_LSS_SHFT)
+#define SID_LSS(x) ((uint32_t)(x) << SID_LSS_SHFT)
 
 #define SID_FLSS_SHFT (0U)
 #define SID_FLSS_MASK (0xFFFFU << SID_LSS_SHFT)
-#define SID_FLSS(x) ((uint8_t)(x) << SID_LSS_SHFT)
+#define SID_FLSS(x) ((uint32_t)(x) << SID_FLSS_SHFT)
 
 
 // XID
 #define XID_LSE_SHFT (16U)
 #define XID_LSE_MASK (0x7FU << XID_LSE_SHFT)
-#define XID_LSE(x) ((uint8_t)(x) << XID_LSE_SHFT)
+#define XID_LSE(x) ((uint32_t)(x) << XID_LSE_SHFT)
 
 
 #define XID_FLSEA_SHFT (16U)
 #define XID_FLSEA_MASK (0xFFFFU << XID_FLSEA_SHFT)
-#define XID_FLSEA(x) ((uint8_t)(x) << XID_FLSEA_SHFT)
+#define XID_FLSEA(x) ((uint32_t)(x) << XID_FLSEA_SHFT)
 
 
 // Rx FIFO 0
 #define RXF0_F0OM_SHFT (31U)
 #define RXF0_F0OM_MASK (0x1U << RXF0_F0OM_SHFT)
-#define RXF0_F0OM(x) ((uint8_t)(x) << RXF0_F0OM_SHFT)
+#define RXF0_F0OM(x) ((uint32_t)(x) << RXF0_F0OM_SHFT)
 
 #define RXF0_F0WM_SHFT (24U)
 #define RXF0_F0WM_MASK (0x7FU << RXF0_F0WM_SHFT)
-#define RXF0_F0WM(x) ((uint8_t)(x) << RXF0_F0WM_SHFT)
+#define RXF0_F0WM(x) ((uint32_t)(x) << RXF0_F0WM_SHFT)
 
 #define RXF0_F0S_SHFT (16U)
 #define RXF0_F0S_MASK (0x7FU << RXF0_F0S_SHFT)
-#define RXF0_F0S(x) ((uint8_t)(x) << RXF0_F0S_SHFT)
+#define RXF0_F0S(x) ((uint32_t)(x) << RXF0_F0S_SHFT)
 
 #define RXF0_F0SA_SHFT (0U)
 #define RXF0_F0SA_MASK (0xFFFFU << RXF0_F0SA_SHFT)
-#define RXF0_F0SA(x) ((uint8_t)(x) << RXF0_F0SA_SHFT)
+#define RXF0_F0SA(x) ((uint32_t)(x) << RXF0_F0SA_SHFT)
 
 
 // Rx FIFO 1
 #define RXF1_F1OM_SHFT (31U)
 #define RXF1_F1OM_MASK (0x1U << RXF1_F1OM_SHFT)
-#define RXF1_F1OM(x) ((uint8_t)(x) << RXF1_F1OM_SHFT)
+#define RXF1_F1OM(x) ((uint32_t)(x) << RXF1_F1OM_SHFT)
 
 #define RXF1_F1WM_SHFT (24U)
 #define RXF1_F1WM_MASK (0x7FU << RXF1_F1WM_SHFT)
-#define RXF1_F1WM(x) ((uint8_t)(x) << RXF1_F1WM_SHFT)
+#define RXF1_F1WM(x) ((uint32_t)(x) << RXF1_F1WM_SHFT)
 
 #define RXF1_F1S_SHFT (16U)
 #define RXF1_F1S_MASK (0x7FU << RXF1_F1S_SHFT)
-#define RXF1_F1S(x) ((uint8_t)(x) << RXF1_F1S_SHFT)
+#define RXF1_F1S(x) ((uint32_t)(x) << RXF1_F1S_SHFT)
 
 #define RXF1_F1SA_SHFT (0U)
 #define RXF1_F1SA_MASK (0xFFFFU << RXF1_F1SA_SHFT)
-#define RXF1_F1SA(x) ((uint8_t)(x) << RXF1_F1SA_SHFT)
+#define RXF1_F1SA(x) ((uint32_t)(x) << RXF1_F1SA_SHFT)
 
 
 // Rx Buffer
 #define RXB_RBSA_SHFT (0U)
 #define RXB_RBSA_MASK (0xFFFFU << RXB_RBSA_SHFT)
-#define RXB_RBSA(x) ((uint8_t)(x) << RXB_RBSA_SHFT)
+#define RXB_RBSA(x) ((uint32_t)(x) << RXB_RBSA_SHFT)
 
 
 // Rx Element Size Config
 #define RX_RBDS_SHFT (8U)
 #define RX_RBDS_MASK (0x7U << RX_RBDS_SHFT)
-#define RX_RBDS(x) ((uint8_t)(x) << RX_RBDS_SHFT)
+#define RX_RBDS(x) ((uint32_t)(x) << RX_RBDS_SHFT)
 
 #define RX_F1DS_SHFT (4U)
 #define RX_F1DS_MASK (0x7U << RX_F1DS_SHFT)
-#define RX_F1DS(x) ((uint8_t)(x) << RX_F1DS_SHFT)
+#define RX_F1DS(x) ((uint32_t)(x) << RX_F1DS_SHFT)
 
 #define RX_F0DS_SHFT (0U)
 #define RX_F0DS_MASK (0x7U << RX_F0DS_SHFT)
-#define RX_F0DS(x) ((uint8_t)(x) << RX_F0DS_SHFT)
+#define RX_F0DS(x) ((uint32_t)(x) << RX_F0DS_SHFT)
 
 
 // Tx Event FIFO Config
 #define TXEVF_EFWM_SHFT (24U)
 #define TXEVF_EFWM_MASK (0x3FU << TXEVF_EFWM_SHFT)
-#define TXEVF_EFWM(x) ((uint8_t)(x) << TXEVF_EFWM_SHFT)
+#define TXEVF_EFWM(x) ((uint32_t)(x) << TXEVF_EFWM_SHFT)
 
 #define TXEVF_EFS_SHFT (16U)
 #define TXEVF_EFS_MASK (0x3FU << TXEVF_EFS_SHFT)
-#define TXEVF_EFS(x) ((uint8_t)(x) << TXEVF_EFS_SHFT)
+#define TXEVF_EFS(x) ((uint32_t)(x) << TXEVF_EFS_SHFT)
 
 #define TXEVF_EFSA_SHFT (0U)
 #define TXEVF_EFSA_MASK (0xFFFFU << TXEVF_EFSA_SHFT)
-#define TXEVF_EFSA(x) ((uint8_t)(x) << TXEVF_EFSA_SHFT)
+#define TXEVF_EFSA(x) ((uint32_t)(x) << TXEVF_EFSA_SHFT)
 
 
 // Tx Buffer Config
 #define TXB_TFQM_SHFT (30U)
 #define TXB_TFQM_MASK (0x1U << TXB_TFQM_SHFT)
-#define TXB_TFQM(x) ((uint8_t)(x) << TXB_TFQM_SHFT)
+#define TXB_TFQM(x) ((uint32_t)(x) << TXB_TFQM_SHFT)
 
 #define TXB_TFQS_SHFT (24U)
 #define TXB_TFQS_MASK (0x3FU << TXB_TFQS_SHFT)
-#define TXB_TFQS(x) ((uint8_t)(x) << TXB_TFQS_SHFT)
+#define TXB_TFQS(x) ((uint32_t)(x) << TXB_TFQS_SHFT)
 
 #define TXB_NDTB_SHFT (16U)
 #define TXB_NDTB_MASK (0x3FU << TXB_NDTB_SHFT)
-#define TXB_NDTB(x) ((uint8_t)(x) << TXB_NDTB_SHFT)
+#define TXB_NDTB(x) ((uint32_t)(x) << TXB_NDTB_SHFT)
 
 #define TXB_TBSA_SHFT (0U)
 #define TXB_TBSA_MASK (0xFFFFU << TXB_TBSA_SHFT)
-#define TXB_TBSA(x) ((uint8_t)(x) << TXB_TBSA_SHFT)
+#define TXB_TBSA(x) ((uint32_t)(x) << TXB_TBSA_SHFT)
 
 
 // TX Element Size Config
 #define TX_TBDS_SHFT (0U)
 #define TX_TBDS_MASK (0x7U << TX_TBDS_SHFT)
-#define TX_TBDS(x) ((uint8_t)(x) << TX_TBDS_SHFT)
+#define TX_TBDS(x) ((uint32_t)(x) << TX_TBDS_SHFT)
 
 
 
@@ -290,7 +290,7 @@ typedef struct
 
 // SID Filter Type
 #define SID_SFT_SHFT (30U)
-#define SID_SFT(x) ((uint8_t)(x) << SID_SFT_SHFT)
+#define SID_SFT(x) ((uint32_t)(x) << SID_SFT_SHFT)
 
 // Options for the SID & XID filter type
 #define RANGE_FILTER            0b00U
@@ -300,7 +300,7 @@ typedef struct
 
 // Standard Element Filter Configuration
 #define SID_SFEC_SHFT (27U)
-#define SID_SFEC(x) ((uint8_t)(x) << SID_SFEC_SHFT)
+#define SID_SFEC(x) ((uint32_t)(x) << SID_SFEC_SHFT)
 
 // Options for the element configuration
 #define DISABLE_FILTER_ELEMENT  0b000U
@@ -339,7 +339,7 @@ typedef struct
 // Word 0
 
 #define XID_EFEC_SHFT (29U)
-#define XID_EFEC(x) ((uint8_t)(x) << XID_EFEC_SHFT)
+#define XID_EFEC(x) ((uint32_t)(x) << XID_EFEC_SHFT)
 
 #define XID_EFID1_SHFT (0U)
 #define XID_EFID1_MASK (0x1FFFFFFF)
@@ -348,7 +348,7 @@ typedef struct
 // Word 1
 
 #define XID_EFT_SHFT (30U)
-#define XID_EFT(x) ((uint8_t)(x) << XID_EFT_SHFT)
+#define XID_EFT(x) ((uint32_t)(x) << XID_EFT_SHFT)
 
 #define XID_EFID2_SHFT (0U)
 #define XID_EFID2_MASK (0x1FFFFFFF)
@@ -367,6 +367,7 @@ typedef struct
 // Available Device Modes
 #define STANDBY_MODE (0b01 << 6U)
 #define NORMAL_MODE (0b10 << 6U)
+#define CLEAN_MODE (0b11 << 6U)
 
 // CC Control Register Address
 #define CCCR 0x1018 
@@ -377,7 +378,7 @@ typedef struct
 #define CAN_CCCR_CSR  (1U << 4U)
 
 /// 0 - CAN, 1 - CAN FD
-#define CAN_MODE 1
+#define CAN_MODE 0
 
 /// 0 - Bit Rate Switching disabled, 1 - enabled
 #define BIT_RATE_SWITCH 1
@@ -427,7 +428,7 @@ typedef struct
     uint8_t data_byte_1;
     uint8_t data_byte_0;
 
-} TXElement;
+} TXFIFOElement;
 
 #define ESI_SHFT 31U
 #define XTD_SHFT 30U
@@ -447,4 +448,20 @@ typedef struct
 #define DB0_SHFT 0U
 
 #define WORD     0x4U
+
+#define SPI_WRITE_OPCODE 0x61
+#define SPI_READ_OPCODE  0x41
+
+#define LENGTH_BYTE 0x4
+
+#define ENDIAN_REGISTER_TEST 0x1004
+
+void spi_init();
+uint8_t spiRegisterWrite(uint16_t reg_addr, uint32_t reg_value, uint32_t * pointer);
+uint32_t spiRegisterRead(uint16_t reg_addr);
+uint8_t initCAN (const BitTimingParams  * bTParams, 
+                 const TiMRAMParams     * MRAM);
+uint8_t setSIDFilters(SID_filter * filters, TiMRAMParams * MRAM);
+uint8_t setXIDFilters(XID_filter * filters, TiMRAMParams * MRAM);
+uint8_t sendCAN(TiMRAMParams * MRAM, TXFIFOElement * TXE);
 

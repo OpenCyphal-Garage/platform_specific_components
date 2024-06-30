@@ -8,6 +8,15 @@
 #include <string.h>
 
 
+void spi_init() 
+{
+
+/**
+ * TODO: Implement SPI init 
+*/
+
+}
+
 uint8_t spiRegisterWrite(uint32_t addr, 
                          uint32_t regValue)
 {
@@ -42,34 +51,63 @@ uint8_t initCAN (const BitTimingParams  * bTParams,
 
     // TODO: Cover edge cases for values in structs + error reporting
 
+    // spi_init();
+
     // Standby Mode Check
-    if ((spiRegisterRead(MODE_SEL)) != STANDBY_MODE)
+    uint32_t mode = 0;
+
+    mode = spiRegisterRead(MODE_SEL);
+
+    // Standby Mode Check
+    if ((mode & 0xC0) != STANDBY_MODE)
+    {   
+        printf("Device not in STANDBY_MODE, MODE: %lu, setting STANDBY_MODE\n", mode & 0xC0);
+        
+        mode &= ~CLEAN_MODE;
+        mode |= STANDBY_MODE;
+        
+        spiRegisterWrite(MODE_SEL, mode);
+        printf("STANDBY_MODE set successfully\n");
+
+        mode = spiRegisterRead(MODE_SEL);
+        printf("New device mode: %lX, NEEDED: %X\n", mode & 0xC0, STANDBY_MODE);
+    }
+    else
     {
-        spiRegisterWrite(MODE_SEL, STANDBY_MODE);
+        printf("Device in STANDBY_MODE, mode: %lX\n", mode);
     }
 
     // Initialization Mode
     // TODO: Check whether CSR needs to be written before CCE and INIT
+    
     uint32_t init = spiRegisterRead(CCCR);
+
+    printf("Initial CCCR content: %lX\n", init);
+
+    init &= ~(CAN_CCCR_CCE | CAN_CCCR_INIT);
     init |= (CAN_CCCR_CCE | CAN_CCCR_INIT);
     init &= ~CAN_CCCR_CSR;
+
     
     uint32_t bit_timing = 0;
     uint32_t trans_delay_comp = 0;
 
-    uint8_t prescaler =         bTParams -> prescaler;
+    uint8_t prescaler       =   bTParams -> prescaler;
     uint8_t prop_and_phase1 =   bTParams -> prop_and_phase1;
-    uint8_t phase2 =            bTParams -> phase2;
+    uint8_t phase2          =   bTParams -> phase2;
     uint8_t sync_jump_width =   bTParams -> sync_jump_width;
-    uint8_t tdc =               bTParams -> tdc;
+    uint8_t tdc             =   bTParams -> tdc;
 
 
     // FD/BRS & Bit Timing Init Cofiguration
     if (CAN_MODE == 0)
     {
-        spiRegisterWrite(CCCR, init);    
+        printf("Device in CAN mode\n");
+        spiRegisterWrite(CCCR, init);
     
-        bit_timing = spiRegisterRead(NBTP);  
+        bit_timing = spiRegisterRead(NBTP); 
+
+        printf("Initial NBTP content: %lu\n", bit_timing); 
 
         // Reset the NBTP register values
         bit_timing &= ~(CAN_NBTP_NSJW_MASK      | 
@@ -82,6 +120,8 @@ uint8_t initCAN (const BitTimingParams  * bTParams,
         bit_timing |= CAN_TIME_SEG_1(prop_and_phase1);
         bit_timing |= CAN_TIME_SEG_2(phase2);
         bit_timing |= CAN_PRESCALER(prescaler);
+
+        printf("Intended NBTP value: %lX\n", bit_timing);
 
         spiRegisterWrite(NBTP, bit_timing);
 
@@ -118,8 +158,20 @@ uint8_t initCAN (const BitTimingParams  * bTParams,
         spiRegisterWrite(TDCR, trans_delay_comp);
     }
 
-    // MRAM Init
+    // Zero out MRAM
+
+    spiRegisterWrite(SIDFC, 0x0);
+    spiRegisterWrite(XIDFC, 0x0);
+    spiRegisterWrite(RXF0C, 0x0);
+    spiRegisterWrite(RXF1C, 0x0);
+    spiRegisterWrite(RXBC, 0x0);
+    spiRegisterWrite(RXESC, 0x0);
+    spiRegisterWrite(TXEFC, 0x0);
+    spiRegisterWrite(TXBC, 0x0);
+    spiRegisterWrite(TXESC, 0x0);
     
+    // MRAM Init
+
     uint32_t sid        = spiRegisterRead(SIDFC);
     uint32_t xid        = spiRegisterRead(XIDFC);
     uint32_t rxf0       = spiRegisterRead(RXF0C);
@@ -215,10 +267,18 @@ uint8_t initCAN (const BitTimingParams  * bTParams,
     spiRegisterWrite(TXBC, txb);
     spiRegisterWrite(TXESC, tx);
 
-    
-    // Put the TCAN45xx device into "NORMAL" mode
-    spiRegisterWrite(MODE_SEL, NORMAL_MODE);
 
+    uint32_t selected_mode = spiRegisterRead(MODE_SEL);
+
+    printf("Initial device mode: %lX\n", selected_mode);
+
+    selected_mode &= ~CLEAN_MODE;
+    selected_mode |= NORMAL_MODE;
+
+    printf("Intended mode: %lX\n", selected_mode);
+
+    spiRegisterWrite(MODE_SEL, selected_mode);
+    printf("Device in NORMAL_MODE, init_can successful\n");
 
     return 0;
 }
@@ -272,7 +332,7 @@ uint8_t setXIDFilters(XID_filter * filters, TiMRAMParams * MRAM)
     return 0;
 }
 
-uint8_t sendCAN(TiMRAMParams * MRAM, TXElement * TXE)
+uint8_t sendCAN(TiMRAMParams * MRAM, TXFIFOElement * TXE)
 {
     // Check that any TX Buffer is vacant
     uint32_t free_level = spiRegisterRead(TXFQS);
@@ -284,6 +344,7 @@ uint8_t sendCAN(TiMRAMParams * MRAM, TXElement * TXE)
     
     if (!(TFFL(free_level)))
     {
+        printf("ERROR: No TX BUffers Available, return 1\n");
         return 1;
     }
 
