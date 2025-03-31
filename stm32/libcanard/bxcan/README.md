@@ -40,6 +40,8 @@ In order to avoid frame loss due to RX overrun, the following measures should be
 * The driver does not permit concurrent access from different threads of execution.
 * The clocks of the CAN peripheral must be enabled by the application before the driver is
 initialized. The driver cannot do that because this logic is not uniform across the STM32 family.
+* The driver does not configure CAN GPIOs, as they vary by hardware setup. 
+
 
 Note that it is possible to invoke the driver's API functions from IRQ context, provided that the
 application takes care about proper guarding with critical sections.
